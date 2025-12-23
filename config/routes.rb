@@ -1,0 +1,17 @@
+Rails.application.routes.draw do
+  # This creates the standard routes AND our new workflow buttons
+  resources :reports do
+    member do
+      post :submit_for_qc
+      post :approve
+      post :request_revision
+    end
+  end
+
+  resources :bid_items
+  resources :phases
+  resources :projects
+  
+  # Set the homepage to the search screen
+  root "reports#index"
+end

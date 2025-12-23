@@ -1,0 +1,10 @@
+<p style="color: green"><%= notice %></p>
+
+<%= render @inspection_entry %>
+
+<div>
+  <%= link_to "Edit this inspection entry", edit_inspection_entry_path(@inspection_entry) %> |
+  <%= link_to "Back to inspection entries", inspection_entries_path %>
+
+  <%= button_to "Destroy this inspection entry", @inspection_entry, method: :delete %>
+</div>

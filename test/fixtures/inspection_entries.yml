@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  report: one
+  bid_item: one
+  quantity: 9.99
+  location: MyString
+  notes: MyText
+
+two:
+  report: two
+  bid_item: two
+  quantity: 9.99
+  location: MyString
+  notes: MyText

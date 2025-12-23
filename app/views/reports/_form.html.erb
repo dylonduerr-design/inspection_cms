@@ -1,0 +1,206 @@
+<%= form_with(model: report, id: "report-form") do |form| %>
+  <% if report.errors.any? %>
+    <div style="background-color: #f8d7da; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
+      <h2><%= pluralize(report.errors.count, "error") %> prohibited this report from being saved:</h2>
+      <ul><% report.errors.each do |error| %><li><%= error.full_message %></li><% end %></ul>
+    </div>
+  <% end %>
+
+  <div class="form-section" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px;">
+    <h3>1. General Information</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+      <div><%= form.label :dir_number %> <%= form.text_field :dir_number, style: "width: 100%" %></div>
+      <div><%= form.label :inspection_date %> <%= form.date_field :inspection_date, style: "width: 100%" %></div>
+      <div><%= form.label :inspector %> <%= form.text_field :inspector, style: "width: 100%" %></div>
+      <div><%= form.label :contractor %> <%= form.text_field :contractor, style: "width: 100%" %></div>
+      <div><%= form.label :project_id %> <%= form.collection_select :project_id, Project.all, :id, :name, {}, {style: "width: 100%"} %></div>
+      <div><%= form.label :phase_id %> <%= form.collection_select :phase_id, Phase.all, :id, :name, {}, {style: "width: 100%"} %></div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+      <div><%= form.label :shift_start %> <%= form.select :shift_start, ["06:00 AM", "07:00 AM", "08:00 AM", "06:00 PM", "07:00 PM"], {include_blank: true}, {style: "width: 100%"} %></div>
+      <div><%= form.label :shift_end %> <%= form.select :shift_end, ["02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "02:00 AM"], {include_blank: true}, {style: "width: 100%"} %></div>
+      <div><%= form.label :temperature, "Temp (°F)" %> <%= form.number_field :temperature, style: "width: 100%" %></div>
+      <div><%= form.label :weather %> <%= form.text_field :weather, style: "width: 100%" %></div>
+    </div>
+
+    <div style="margin-top: 15px; display: flex; gap: 10px;">
+      <%= form.text_field :station_start, placeholder: "Start Station", style: "flex: 1" %>
+      <%= form.text_field :station_end, placeholder: "End Station", style: "flex: 1" %>
+    </div>
+  </div>
+
+  <div class="form-section" style="border: 1px solid #007bff; padding: 15px; margin-bottom: 20px;">
+    <h3>2. Inspection Checklist</h3>
+
+    <div style="margin-bottom: 15px;">
+      <strong>Deficiencies Identified?</strong><br>
+      <% Report.deficiency_statuses.keys.each do |k| %>
+        <%= form.radio_button :deficiency_status, k, class: "deficiency-trigger" %> 
+        <%= k.humanize %> &nbsp;
+      <% end %>
+      <div id="deficiency-note" style="display: none; margin-top: 5px;">
+        <%= form.label :deficiency_desc, "Description:" %>
+        <%= form.text_area :deficiency_desc, rows: 2, style: "width: 100%; border: 1px solid red;" %>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 15px;">
+      <strong>Safety Incidents?</strong><br>
+      <% Report.safety_incidents.keys.each do |k| %>
+        <%= form.radio_button :safety_incident, k, class: "safety-trigger" %> 
+        <%= k.humanize %> &nbsp;
+      <% end %>
+      <div id="safety-note" style="display: none; margin-top: 5px;">
+        <%= form.label :safety_desc, "Describe Incident:" %>
+        <%= form.text_area :safety_desc, rows: 2, style: "width: 100%; border: 1px solid red;" %>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+      <div><strong>Traffic Control?</strong><br><%= form.select :traffic_control, Report.traffic_controls.keys.map{|k| [k.humanize, k]} %></div>
+      <div><strong>Environmental?</strong><br><%= form.select :environmental, Report.environmentals.keys.map{|k| [k.humanize, k]} %></div>
+      <div><strong>Security?</strong><br><%= form.select :security, Report.securities.keys.map{|k| [k.humanize, k]} %></div>
+    </div>
+
+    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
+      <%= form.check_box :qa_activity, id: "qa_check" %> <strong>QA Testing Performed?</strong>
+      <div id="qa-section" style="display: none; background-color: #eee; padding: 10px; margin-top: 5px;">
+        <div style="display: flex; gap: 10px;">
+          <div style="flex:1"><%= form.label :qa_bid_item_id, "Item" %><%= form.collection_select :qa_bid_item_id, BidItem.all, :id, :code, {include_blank: true}, {style: "width:100%"} %></div>
+          <div style="flex:1"><%= form.label :qa_type, "Type" %><%= form.select :qa_type, Report.qa_types.keys.map{|k| [k.humanize, k]}, {include_blank: true}, {style: "width:100%"} %></div>
+          <div style="flex:1"><%= form.label :qa_result, "Result" %><%= form.select :qa_result, Report.qa_results.keys.map{|k| [k.humanize, k]}, {include_blank: true}, {style: "width:100%"} %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" style="border: 1px solid #28a745; padding: 15px; margin-bottom: 20px;">
+    <h3>3. Crew & Equipment</h3>
+    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+      <div style="flex: 2"><%= form.label :foreman %> <%= form.text_field :foreman, style: "width: 100%" %></div>
+      <div style="flex: 1"><%= form.label :laborer_count %> <%= form.number_field :laborer_count, style: "width: 100%" %></div>
+      <div style="flex: 1"><%= form.label :operator_count %> <%= form.number_field :operator_count, style: "width: 100%" %></div>
+      <div style="flex: 1"><%= form.label :survey_count %> <%= form.number_field :survey_count, style: "width: 100%" %></div>
+    </div>
+
+    <strong>Equipment Log</strong>
+    <div id="equipment-fields-container">
+      <%= form.fields_for :equipment_entries do |eq_form| %>
+        <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
+          <%= eq_form.text_field :make_model, placeholder: "Make/Model", style: "flex: 3" %>
+          <%= eq_form.number_field :hours, step: 0.5, placeholder: "Hrs", style: "flex: 1" %>
+          <% if eq_form.object.persisted? %>
+            <div style="flex: 0.5;"><%= eq_form.check_box :_destroy %> Del</div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    
+    <button type="button" id="add-equipment-btn" style="background-color: #28a745; color: white; border: none; padding: 5px 10px; cursor: pointer; margin-top: 5px;">+ Add Equipment</button>
+  </div>
+
+  <div class="form-section" style="border: 1px solid #17a2b8; padding: 15px; margin-bottom: 20px;">
+    <h3>4. Quantities & Documents</h3>
+    <%= form.fields_for :inspection_entries do |entry_form| %>
+      <div style="background-color: #f9f9f9; padding: 5px; margin-bottom: 5px; border-bottom: 1px solid #ddd;">
+        <%= entry_form.collection_select :bid_item_id, BidItem.all, :id, :code, include_blank: "Select Item" %>
+        Qty: <%= entry_form.number_field :quantity, step: 0.01, style: "width: 80px" %>
+        Loc: <%= entry_form.text_field :location, placeholder: "Station", style: "width: 100px" %>
+      </div>
+    <% end %>
+    
+    <div style="margin-top: 15px;"><%= form.label :plan_sheet %> <%= form.text_field :plan_sheet, style: "width: 100%" %></div>
+    <div style="margin-top: 10px;"><%= form.label :relevant_docs %> <%= form.text_field :relevant_docs, style: "width: 100%" %></div>
+    <div style="margin-top: 15px;"><%= form.label :commentary %> <%= form.text_area :commentary, rows: 4, style: "width: 100%" %></div>
+    <div style="margin-top: 15px;"><strong>Attachments:</strong><br><%= form.file_field :attachments, multiple: true %></div>
+  </div>
+
+  <%= form.submit "Save Report", style: "background-color: green; color: white; padding: 10px 20px; font-size: 1.2em; width: 100%; cursor: pointer;" %>
+<% end %>
+
+<template id="equipment-template">
+  <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
+    <input style="flex: 3" placeholder="Make/Model" type="text" name="report[equipment_entries_attributes][NEW_RECORD][make_model]" id="report_equipment_entries_attributes_NEW_RECORD_make_model">
+    <input style="flex: 1" placeholder="Hrs" step="0.5" type="number" name="report[equipment_entries_attributes][NEW_RECORD][hours]" id="report_equipment_entries_attributes_NEW_RECORD_hours">
+  </div>
+</template>
+
+<script>
+function initializeFormLogic() {
+  console.log("Initializing form logic...");
+
+  // 1. ADD EQUIPMENT BUTTON
+  const addBtn = document.getElementById("add-equipment-btn");
+  const eqContainer = document.getElementById("equipment-fields-container");
+  const template = document.getElementById("equipment-template");
+
+  if(addBtn && template && eqContainer) {
+    // Remove old listener to avoid double-clicks if function runs twice
+    const newBtn = addBtn.cloneNode(true);
+    addBtn.parentNode.replaceChild(newBtn, addBtn);
+    
+    newBtn.addEventListener("click", function(e) {
+      e.preventDefault(); // Stop form from submitting
+      console.log("Adding equipment row...");
+      
+      const clone = template.content.cloneNode(true);
+      const uniqueId = new Date().getTime();
+      
+      clone.querySelectorAll("input").forEach(input => {
+        input.name = input.name.replace("NEW_RECORD", uniqueId);
+        input.id = input.id.replace("NEW_RECORD", uniqueId);
+      });
+      
+      eqContainer.appendChild(clone);
+    });
+  }
+
+  // 2. TOGGLE LOGIC (Deficiency & Safety)
+  function updateToggles() {
+    // Deficiency
+    const defStatus = document.querySelector('.deficiency-trigger:checked')?.value;
+    const defDiv = document.getElementById('deficiency-note');
+    if (defDiv) {
+      if(["yes_deficiency", "cdr", "ncr"].includes(defStatus)) {
+        defDiv.style.display = 'block';
+      } else {
+        defDiv.style.display = 'none';
+      }
+    }
+
+    // Safety
+    const safetyStatus = document.querySelector('.safety-trigger:checked')?.value;
+    const safetyDiv = document.getElementById('safety-note');
+    if (safetyDiv) {
+      if(safetyStatus === 'safety_yes') {
+        safetyDiv.style.display = 'block';
+      } else {
+        safetyDiv.style.display = 'none';
+      }
+    }
+  }
+
+  // Attach listeners to all radio buttons
+  document.querySelectorAll('.deficiency-trigger, .safety-trigger').forEach(input => {
+    input.addEventListener('change', updateToggles);
+  });
+  
+  // Run once immediately to set initial state
+  updateToggles();
+
+  // 3. QA CHECKBOX
+  const qaCheck = document.getElementById('qa_check');
+  const qaSection = document.getElementById('qa-section');
+  if(qaCheck && qaSection) {
+    qaCheck.addEventListener('change', function() {
+      qaSection.style.display = this.checked ? 'block' : 'none';
+    });
+    qaSection.style.display = qaCheck.checked ? 'block' : 'none';
+  }
+}
+
+// LISTEN FOR BOTH STANDARD LOAD AND TURBO LOAD
+document.addEventListener("turbo:load", initializeFormLogic);
+document.addEventListener("DOMContentLoaded", initializeFormLogic);
+</script>

@@ -1,0 +1,39 @@
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <h1>Master Quantity Dashboard</h1>
+  <div>
+    <%= link_to "New Bid item", new_bid_item_path, class: "button" %>
+    <%= link_to "Back to Reports", reports_path, style: "margin-left: 10px;" %>
+  </div>
+</div>
+
+<div style="border: 1px solid #ccc; border-radius: 5px; overflow: hidden;">
+  <table style="width: 100%; border-collapse: collapse;">
+    <thead style="background-color: #333; color: white;">
+      <tr>
+        <th style="padding: 10px; text-align: left;">Code</th>
+        <th style="padding: 10px; text-align: left;">Description</th>
+        <th style="padding: 10px; text-align: center;">Unit</th>
+        <th style="padding: 10px; text-align: right; background-color: #444;">Cumulative Total</th>
+        <th style="padding: 10px; text-align: center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @bid_items.each do |bid_item| %>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 10px;"><%= bid_item.code %></td>
+          <td style="padding: 10px;"><%= bid_item.description %></td>
+          <td style="padding: 10px; text-align: center;"><%= bid_item.unit %></td>
+          
+          <td style="padding: 10px; text-align: right; font-weight: bold; font-size: 1.1em; color: #007bff;">
+            <%= number_with_precision(bid_item.total_quantity, precision: 2) %>
+          </td>
+
+          <td style="padding: 10px; text-align: center;">
+            <%= link_to "Show", bid_item %> |
+            <%= link_to "Edit", edit_bid_item_path(bid_item) %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

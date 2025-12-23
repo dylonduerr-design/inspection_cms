@@ -1,0 +1,122 @@
+<p style="color: green"><%= notice %></p>
+<p style="color: red"><%= alert %></p>
+
+<h1>Daily Inspection Report #<%= @report.dir_number %></h1>
+
+<div style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; background-color: #f9f9f9;">
+  <div style="display: flex; justify-content: space-between;">
+    <div>
+      <p><strong>Date:</strong> <%= @report.inspection_date %></p>
+      <p><strong>Inspector:</strong> <%= @report.inspector %></p>
+      <p><strong>Project:</strong> <%= @report.project&.name %></p>
+    </div>
+    <div>
+      <p><strong>Phase:</strong> <%= @report.phase&.name %></p>
+      <p><strong>Status:</strong> 
+        <span style="background-color: #e2e3e5; padding: 2px 6px; border-radius: 4px;">
+         <%= @report.status&.humanize || "Unknown" %>
+        </span>
+      </p>
+      <%= @report.result&.humanize || "Pending" %>
+    </div>
+  </div>
+</div>
+
+<h3>Quantities Reported</h3>
+<% if @report.inspection_entries.any? %>
+  <table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%;">
+    <thead>
+      <tr style="background-color: #eee;">
+        <th style="text-align: left;">Bid Item</th>
+        <th style="text-align: left;">Description</th>
+        <th style="text-align: left;">Location</th>
+        <th style="text-align: right;">Quantity</th>
+        <th style="text-align: center;">Unit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @report.inspection_entries.each do |entry| %>
+        <tr>
+          <td><%= entry.bid_item.code %></td>
+          <td><%= entry.bid_item.description %></td>
+          <td><%= entry.location %></td>
+          <td style="text-align: right;"><%= entry.quantity %></td>
+          <td style="text-align: center;"><%= entry.bid_item.unit %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p><em>No quantities recorded for this report.</em></p>
+<% end %>
+
+<div style="margin-top: 30px; padding: 20px; background-color: #f1f1f1; border-top: 2px solid #ddd;">
+  
+  <% if @report.creating? || @report.revise? %>
+    <%= button_to "Submit for QC Review", submit_for_qc_report_path(@report), method: :post, style: "background-color: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer;" %>
+    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">(Moves report to QC Tab)</p>
+  <% end %>
+
+  <% if @report.qc_review? %>
+    <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px;">
+      <h4 style="margin-top: 0;">QC Decision</h4>
+      
+      <%= button_to "Approve & Authorize", approve_report_path(@report), method: :post, style: "background-color: green; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-bottom: 15px;" %>
+
+      <hr style="border-top: 1px solid #ccc;">
+
+      <%= form_with url: request_revision_report_path(@report), method: :post, local: true do |f| %>
+        <p><strong>Return for Revision:</strong></p>
+        <%= text_area_tag 'note', nil, placeholder: "Enter reason for rejection...", rows: 2, style: "width: 100%; margin-bottom: 10px;" %>
+        <%= f.submit "Return to Inspector", style: "background-color: #dc3545; color: white; padding: 5px 15px; border: none; cursor: pointer;" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
+    <%= link_to "Edit Details", edit_report_path(@report), style: "margin-right: 10px;" %> | 
+    <%= link_to "Back to List", reports_path, style: "margin-left: 10px;" %>
+  </div>
+</div>
+<div style="margin-top: 30px; margin-bottom: 30px;">
+  <h3>Attached Documents & Photos</h3>
+  <% if @report.attachments.attached? %>
+    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+      <% @report.attachments.each do |file| %>
+        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px; width: 150px; text-align: center;">
+          
+          <% if file.representable? %>
+            <%= image_tag file.representation(resize_to_limit: [150, 150]), style: "max-width: 100%; height: auto; border-radius: 4px;" %>
+          <% else %>
+            <div style="font-size: 3em; color: #666;">📄</div>
+          <% end %>
+
+          <div style="margin-top: 5px; font-size: 0.8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <%= link_to file.filename, rails_blob_path(file, disposition: "attachment"), style: "text-decoration: none; color: #007bff;" %>
+          </div>
+          <small style="color: #999;"><%= (file.byte_size / 1024.0).round(1) %> KB</small>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p style="color: #666; font-style: italic;">No attachments found.</p>
+  <% end %>
+</div>
+
+<div style="margin-top: 40px;">
+  <h3>Activity Log</h3>
+  <% if @report.activity_logs.any? %>
+    <ul style="list-style: none; padding: 0;">
+      <% @report.activity_logs.order(created_at: :desc).each do |log| %>
+        <li style="border-bottom: 1px solid #eee; padding: 10px 0;">
+          <strong><%= log.user %></strong> 
+          <span style="color: #888; font-size: 0.85em;">(<%= log.created_at.strftime("%b %d, %I:%M %p") %>)</span>:
+          <br>
+          <%= log.note %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p style="color: #666;">No activity recorded yet.</p>
+  <% end %>
+</div>
