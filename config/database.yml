@@ -79,6 +79,7 @@ test:
 #
 production:
   <<: *default
-  database: inspection_cms_production
-  username: inspection_cms
-  password: <%= ENV["INSPECTION_CMS_DATABASE_PASSWORD"] %>
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  url:  <%= ENV["DATABASE_URL"] %>
