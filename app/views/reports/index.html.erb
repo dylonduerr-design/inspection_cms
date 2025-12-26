@@ -8,7 +8,7 @@
             reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id).merge(status: status)), 
             style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #{params[:status] == status ? '#000' : '#007bff'}; border: 1px solid #ddd; border-bottom: none; background-color: #{params[:status] == status ? '#fff' : '#f9f9f9'}; font-weight: #{params[:status] == status ? 'bold' : 'normal'}; margin-bottom: -2px; border-radius: 5px 5px 0 0;" %>
       <% end %>
-      <%= link_to "All Reports", reports_path, style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #666; margin-left: 10px;" %>
+      <%= link_to "All Reports", reports_path(status: 'all'), style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #666; margin-left: 10px;" %>
     </div>
   </div>
 
