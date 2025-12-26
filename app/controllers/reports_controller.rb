@@ -4,29 +4,42 @@ class ReportsController < ApplicationController
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision ]
 
   # GET /reports
- def index
-  # 1. Default to 'creating' if no status is provided
-  if params[:status].blank?
-    params[:status] = 'creating'
-  end
+  def index
+    # 1. Default to 'creating' if no status is provided
+    if params[:status].blank?
+      params[:status] = 'creating'
+    end
 
-  # 2. Start the query
-  @reports = Report.all
+    # 2. Start the query
+    @reports = Report.all
 
-  # 3. Apply the Status filter (UNLESS the user specifically asked for 'all')
-  if params[:status] != 'all'
-    @reports = @reports.where(status: params[:status])
-  end
+    # 3. Apply the Status filter (UNLESS the user specifically asked for 'all')
+    if params[:status] != 'all'
+      @reports = @reports.where(status: params[:status])
+    end
 
-  # ... The rest of your existing search filters (inspector, date, etc.) go here ...
-  if params[:inspector].present?
-    @reports = @reports.where("inspector ILIKE ?", "%#{params[:inspector]}%")
-  end
-  # ... etc ...
-end
+    # 4. Apply other filters
+    if params[:inspector].present?
+      @reports = @reports.where("inspector ILIKE ?", "%#{params[:inspector]}%")
+    end
+    
+    if params[:project_id].present?
+      @reports = @reports.where(project_id: params[:project_id])
+    end
 
+    if params[:bid_item_id].present?
+      @reports = @reports.joins(:inspection_entries).where(inspection_entries: { bid_item_id: params[:bid_item_id] })
+    end
+    
+    if params[:start_date].present?
+      @reports = @reports.where("inspection_date >= ?", params[:start_date])
+    end
+    
+    if params[:end_date].present?
+      @reports = @reports.where("inspection_date <= ?", params[:end_date])
+    end
 
-    # 3. Handle the Export
+    # 5. Handle the Export
     respond_to do |format|
       format.html # Renders the normal web page
       
@@ -66,7 +79,7 @@ end
         render plain: csv_data
       end
     end
-  end
+  end # <--- THIS IS THE CORRECT END FOR THE INDEX METHOD
 
   # GET /reports/1
   def show
