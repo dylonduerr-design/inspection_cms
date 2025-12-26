@@ -1,56 +1,61 @@
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <h1>Daily Inspection Report Search</h1>
-  <div style="margin: 20px 0; border-bottom: 2px solid #ddd;">
-  <% Report.statuses.keys.each do |status| %>
-    <%= link_to status.humanize, 
-        reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id).merge(status: status)), 
-        style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #{params[:status] == status ? '#000' : '#007bff'}; border: 1px solid #ddd; border-bottom: none; background-color: #{params[:status] == status ? '#fff' : '#f9f9f9'}; font-weight: #{params[:status] == status ? 'bold' : 'normal'}; margin-bottom: -2px; border-radius: 5px 5px 0 0;" %>
-  <% end %>
-  <%= link_to "All Reports", reports_path, style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #666; margin-left: 10px;" %>
-</div>
-  <%= link_to "Create New Report", new_report_path, class: "button", style: "background-color: green; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;" %>
-</div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <h1>Daily Inspection Report Search</h1>
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
   <div>
-    <%= link_to "Export to Excel (CSV)", reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id, :status).merge(format: :csv)), style: "background-color: #17a2b8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; margin-right: 10px;" %>
+    <h1 style="margin-bottom: 15px;">Inspection Dashboard</h1>
     
-    <%= link_to "Create New Report", new_report_path, class: "button", style: "background-color: green; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;" %>
+    <div style="border-bottom: 2px solid #ddd;">
+      <% Report.statuses.keys.each do |status| %>
+        <%= link_to status.humanize, 
+            reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id).merge(status: status)), 
+            style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #{params[:status] == status ? '#000' : '#007bff'}; border: 1px solid #ddd; border-bottom: none; background-color: #{params[:status] == status ? '#fff' : '#f9f9f9'}; font-weight: #{params[:status] == status ? 'bold' : 'normal'}; margin-bottom: -2px; border-radius: 5px 5px 0 0;" %>
+      <% end %>
+      <%= link_to "All Reports", reports_path, style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #666; margin-left: 10px;" %>
+    </div>
+  </div>
+
+  <div style="padding-bottom: 5px;">
+    <%= link_to "Create New Report", new_report_path, class: "button", style: "background-color: green; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;" %>
   </div>
 </div>
-<div style="background-color: #f0f0f0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
-  <strong>Search Criteria</strong>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+  <h2 style="color: #555; font-size: 1.5rem; margin: 0;">Filter and Search</h2>
   
-  <%= form_with url: reports_path, method: :get, local: true, style: "margin-top: 10px;" do |form| %>
-    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+  <div>
+    <%= link_to "Export to Excel (CSV)", reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id, :status).merge(format: :csv)), style: "background-color: #17a2b8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;" %>
+  </div>
+</div>
+
+<div style="background-color: #f0f0f0; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
+  <%= form_with url: reports_path, method: :get, local: true do |form| %>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
       
       <div>
-        <%= form.label :start_date, "From:" %>
-        <%= form.date_field :start_date, value: params[:start_date] %>
+        <%= form.label :start_date, "From:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
+        <%= form.date_field :start_date, value: params[:start_date], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px;" %>
       </div>
       <div>
-        <%= form.label :end_date, "To:" %>
-        <%= form.date_field :end_date, value: params[:end_date] %>
+        <%= form.label :end_date, "To:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
+        <%= form.date_field :end_date, value: params[:end_date], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px;" %>
+      </div>
+
+      <div style="flex-grow: 1;">
+        <%= form.label :inspector, "Inspection By:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
+        <%= form.text_field :inspector, value: params[:inspector], placeholder: "Type name...", style: "width: 100%; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" %>
       </div>
 
       <div>
-        <%= form.label :inspector, "Inspection By:" %>
-        <%= form.text_field :inspector, value: params[:inspector], placeholder: "Type name..." %>
+        <%= form.label :project_id, "Segment:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
+        <%= form.collection_select :project_id, Project.all, :id, :name, { include_blank: "All" }, { selected: params[:project_id], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;" } %>
       </div>
 
       <div>
-        <%= form.label :project_id, "Segment:" %>
-        <%= form.collection_select :project_id, Project.all, :id, :name, { include_blank: "All" }, { selected: params[:project_id] } %>
+        <%= form.label :bid_item_id, "Contains Bid Item:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
+        <%= form.collection_select :bid_item_id, BidItem.all, :id, :code, { include_blank: "All" }, { selected: params[:bid_item_id], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;" } %>
       </div>
 
-      <div>
-        <%= form.label :bid_item_id, "Contains Bid Item:" %>
-        <%= form.collection_select :bid_item_id, BidItem.all, :id, :code, { include_blank: "All" }, { selected: params[:bid_item_id] } %>
-      </div>
-
-      <div style="margin-left: auto;">
-        <%= form.submit "Search", style: "background-color: #007bff; color: white; padding: 5px 15px; border: none; border-radius: 4px; cursor: pointer;" %>
-        <%= link_to "Clear", reports_path, style: "color: #666; text-decoration: none; margin-left: 10px;" %>
+      <div style="display: flex; gap: 10px;">
+        <%= form.submit "Search", style: "background-color: #007bff; color: white; padding: 10px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;" %>
+        <%= link_to "Clear", reports_path, style: "color: #666; text-decoration: none; padding: 10px 15px; border: 1px solid #ccc; border-radius: 4px; background: white;" %>
       </div>
 
     </div>
@@ -68,33 +73,3 @@
       <th style="padding: 10px; text-align: center;">Status</th>
       <th style="padding: 10px; text-align: center;">Actions</th>
     </tr>
-  </thead>
-  <tbody>
-    <% @reports.each do |report| %>
-      <tr style="border-bottom: 1px solid #ddd;">
-        <td style="padding: 10px;"><%= report.dir_number %></td>
-        <td style="padding: 10px;"><%= report.inspection_date %></td>
-        <td style="padding: 10px;"><%= report.inspector %></td>
-        <td style="padding: 10px;"><%= report.project&.name %></td>
-        
-        <td style="padding: 10px; text-align: center;">
-            <%= report.result&.humanize || "Pending" %>
-        </td>
-        
-        <td style="padding: 10px; text-align: center;">
-          <span style="padding: 3px 8px; border-radius: 10px; background-color: #e2e3e5; font-size: 0.9em;">
-            <%= report.status&.humanize || "Unknown" %>
-          </span>
-        </td>
-        
-        <td style="padding: 10px; text-align: center;">
-          <%= link_to "View", report, style: "color: #007bff;" %>
-        </td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
-
-<% if @reports.empty? %>
-  <p style="text-align: center; margin-top: 20px; color: #666;">No records located.</p>
-<% end %>
