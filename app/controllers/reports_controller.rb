@@ -4,18 +4,27 @@ class ReportsController < ApplicationController
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision ]
 
   # GET /reports
-  def index
-    # 1. Base Query (Optimized)
-    @reports = Report.includes(:project, :phase, :inspection_entries => :bid_item).order(inspection_date: :desc)
+ def index
+  # 1. Default to 'creating' if no status is provided
+  if params[:status].blank?
+    params[:status] = 'creating'
+  end
 
-    # 2. Apply Filters
-    if params[:status].present?
-      @reports = @reports.where(status: params[:status]) 
-    end
-    @reports = @reports.filter_by_inspector(params[:inspector])
-    @reports = @reports.filter_by_project(params[:project_id])
-    @reports = @reports.filter_by_date_range(params[:start_date], params[:end_date])
-    @reports = @reports.filter_by_bid_item(params[:bid_item_id])
+  # 2. Start the query
+  @reports = Report.all
+
+  # 3. Apply the Status filter (UNLESS the user specifically asked for 'all')
+  if params[:status] != 'all'
+    @reports = @reports.where(status: params[:status])
+  end
+
+  # ... The rest of your existing search filters (inspector, date, etc.) go here ...
+  if params[:inspector].present?
+    @reports = @reports.where("inspector ILIKE ?", "%#{params[:inspector]}%")
+  end
+  # ... etc ...
+end
+
 
     # 3. Handle the Export
     respond_to do |format|
