@@ -100,9 +100,13 @@ class ReportsController < ApplicationController
 
 # POST /reports
   def create
-    @report = Report.new(report_params)
+    # OLD WAY: @report = Report.new(report_params)
+    
+    # NEW WAY: Build the report specifically for the current user
+    @report = current_user.reports.build(report_params) 
 
-    # Change .save to .save! (add the exclamation mark)
+    @report.status ||= :creating
+    
     if @report.save!
       redirect_to report_url(@report), notice: "Report was successfully created."
     else

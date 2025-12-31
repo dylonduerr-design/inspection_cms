@@ -20,6 +20,8 @@ class Report < ApplicationRecord
   # --- 3. ASSOCIATIONS ---
   belongs_to :project
   belongs_to :phase
+  belongs_to :user
+  
   
   # NESTED ENTRIES (Quantities & Equipment)
   has_many :inspection_entries, dependent: :destroy
