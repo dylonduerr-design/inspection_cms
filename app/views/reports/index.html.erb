@@ -1,32 +1,39 @@
-<div style="background-color: #222; color: #0f0; padding: 20px; margin-bottom: 20px; border: 2px solid #0f0; font-family: monospace;">
-  <h3 style="margin-top: 0; color: #0f0;">🕵️ Detective Report</h3>
-  <div style="display: grid; grid-template-columns: 1fr 1fr;">
-    <div>
-      <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
-      <p><strong>2. Reports in this List:</strong> <%= @reports.count %></p>
-      <p><strong>3. Current Status Filter:</strong> "<%= params[:status] %>"</p>
+<button id="detective-toggle-btn" title="Toggle Debugger"> 🐞
+</button>
+
+<div id="detective-window" class="detective-hidden">
+
+    <div style="background-color: #222; color: #0f0; padding: 20px; margin-bottom: 20px; border: 2px solid #0f0; font-family: monospace;">
+      <h3 style="margin-top: 0; color: #0f0;">🕵️ Detective Report</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr;">
+        <div>
+          <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
+          <p><strong>2. Reports in this List:</strong> <%= @reports.count %></p>
+          <p><strong>3. Current Status Filter:</strong> "<%= params[:status] %>"</p>
+        </div>
+        <div>
+          <p><strong>4. Current Params:</strong></p>
+          <code style="color: #ccc; word-break: break-all;"><%= params.to_json %></code>
+        </div>
+      </div>
+      
+      <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
+        <p><strong>5. Who am I?</strong> 
+          <% if user_signed_in? %>
+            ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
+          <% else %>
+            ❌ Not Logged In (Guest)
+          <% end %>
+        </p>
+        
+        <% if user_signed_in? %>
+            <div style="margin-top: 5px;">
+              <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
+            </div>
+        <% end %>
+      </div>
     </div>
-    <div>
-      <p><strong>4. Current Params:</strong></p>
-      <code style="color: #ccc; word-break: break-all;"><%= params.to_json %></code>
     </div>
-  </div>
-  
-  <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
-    <p><strong>5. Who am I?</strong> 
-      <% if user_signed_in? %>
-        ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
-      <% else %>
-        ❌ Not Logged In (Guest)
-      <% end %>
-    </p>
-    
-    <% if user_signed_in? %>
-       <div style="margin-top: 5px;">
-         <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
-       </div>
-    <% end %>
-  </div>
 </div>
 </div>
 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">

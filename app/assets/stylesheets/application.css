@@ -13,3 +13,116 @@
  *= require_tree .
  *= require_self
  */
+/* The Floating Toggle Button */
+#detective-toggle-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 9999; /* Always on top */
+  background-color: #333;
+  color: #00FF00; /* Matching your terminal green style */
+  border: 1px solid #00FF00;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#detective-toggle-btn:hover {
+  transform: scale(1.1);
+  background-color: #000;
+}
+
+/* The Detective Window State */
+#detective-window {
+  /* This ensures it looks like the screenshot when open */
+  background-color: #000; 
+  color: #00FF00;
+  padding: 1rem;
+  border-bottom: 2px solid #00FF00;
+  
+  /* Transition settings */
+  display: block;
+  opacity: 1;
+  max-height: 500px; /* Arbitrary large height */
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+/* The Hidden State */
+#detective-window.detective-hidden {
+  opacity: 0;
+  max-height: 0;
+  padding: 0;
+  border: none;
+}
+
+/* 1. The Container "Card" */
+.form-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #e0e0e0;
+}
+
+.form-card h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  color: #333;
+  border-bottom: 2px solid #007bff; /* Adds a nice accent color line */
+  display: inline-block;
+  padding-bottom: 5px;
+}
+
+/* 2. The Grid System */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem; /* Space between columns */
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  flex: 1; /* By default, items share space equally */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Helper to force full width if needed */
+.full-width {
+  flex-basis: 100%;
+}
+
+/* 3. Input Styling (Polishing the raw boxes) */
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.form-group input, 
+.form-group select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: #fafafa;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus, 
+.form-group select:focus {
+  border-color: #007bff;
+  outline: none;
+  background-color: white;
+}
