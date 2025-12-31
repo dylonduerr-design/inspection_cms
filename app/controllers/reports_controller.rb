@@ -98,11 +98,12 @@ class ReportsController < ApplicationController
     @report.equipment_entries.build
   end
 
-  # POST /reports
+# POST /reports
   def create
     @report = Report.new(report_params)
 
-    if @report.save
+    # Change .save to .save! (add the exclamation mark)
+    if @report.save!
       redirect_to report_url(@report), notice: "Report was successfully created."
     else
       render :new, status: :unprocessable_entity
