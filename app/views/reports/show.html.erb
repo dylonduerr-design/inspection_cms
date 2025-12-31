@@ -14,7 +14,7 @@
       <p><strong>Phase:</strong> <%= @report.phase&.name %></p>
       <p><strong>Status:</strong> 
         <span style="background-color: #e2e3e5; padding: 2px 6px; border-radius: 4px;">
-         <%= @report.status&.humanize || "Unknown" %>
+          <%= @report.status&.humanize || "Unknown" %>
         </span>
       </p>
       <%= @report.result&.humanize || "Pending" %>
@@ -62,9 +62,9 @@
       <h4 style="margin-top: 0;">QC Decision</h4>
       
       <%= button_to "Approve & Authorize", approve_report_path(@report), method: :post, style: "background-color: green; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-bottom: 15px;" %>
-
+      
       <hr style="border-top: 1px solid #ccc;">
-
+      
       <%= form_with url: request_revision_report_path(@report), method: :post, local: true do |f| %>
         <p><strong>Return for Revision:</strong></p>
         <%= text_area_tag 'note', nil, placeholder: "Enter reason for rejection...", rows: 2, style: "width: 100%; margin-bottom: 10px;" %>
@@ -78,23 +78,36 @@
     <%= link_to "Back to List", reports_path, style: "margin-left: 10px;" %>
   </div>
 </div>
-<div style="margin-top: 30px; margin-bottom: 30px;">
-  <h3>Attached Documents & Photos</h3>
-  <% if @report.attachments.attached? %>
-    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
-      <% @report.attachments.each do |file| %>
-        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px; width: 150px; text-align: center;">
-          
-          <% if file.representable? %>
-            <%= image_tag file.representation(resize_to_limit: [150, 150]), style: "max-width: 100%; height: auto; border-radius: 4px;" %>
-          <% else %>
-            <div style="font-size: 3em; color: #666;">📄</div>
-          <% end %>
 
-          <div style="margin-top: 5px; font-size: 0.8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <%= link_to file.filename, rails_blob_path(file, disposition: "attachment"), style: "text-decoration: none; color: #007bff;" %>
+<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+  <h3>Attached Documents & Photos</h3>
+
+  <% if @report.report_attachments.any? %>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+      <% @report.report_attachments.each do |attachment| %>
+        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px; width: 220px; text-align: center;">
+          
+          <div style="margin-bottom: 10px; height: 150px; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9; overflow: hidden;">
+            <% if attachment.file.representable? %>
+              <%= link_to rails_blob_path(attachment.file, disposition: "attachment"), target: "_blank" do %>
+                <% if attachment.file.image? %>
+                   <%= image_tag attachment.file, style: "max-width: 100%; max-height: 150px;" %>
+                <% else %>
+                   <span style="font-size: 4em;">📄</span>
+                <% end %>
+              <% end %>
+            <% else %>
+              <span style="font-size: 3em;">📂</span>
+            <% end %>
           </div>
-          <small style="color: #999;"><%= (file.byte_size / 1024.0).round(1) %> KB</small>
+
+          <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.9em;">
+            <%= attachment.caption.presence || "(No Caption)" %>
+          </div>
+          
+          <div style="font-size: 0.8em; color: #666;">
+            <%= link_to "Download #{attachment.file.filename}", rails_blob_path(attachment.file, disposition: "attachment") %>
+          </div>
         </div>
       <% end %>
     </div>

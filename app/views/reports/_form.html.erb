@@ -1,4 +1,4 @@
-<%= form_with(model: report, id: "report-form") do |form| %>
+<%= form_with(model: report, id: "report-form", multipart: true) do |form| %>
   <% if report.errors.any? %>
     <div style="background-color: #f8d7da; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
       <h2><%= pluralize(report.errors.count, "error") %> prohibited this report from being saved:</h2>
@@ -112,11 +112,65 @@
     <div style="margin-top: 15px;"><%= form.label :plan_sheet %> <%= form.text_field :plan_sheet, style: "width: 100%" %></div>
     <div style="margin-top: 10px;"><%= form.label :relevant_docs %> <%= form.text_field :relevant_docs, style: "width: 100%" %></div>
     <div style="margin-top: 15px;"><%= form.label :commentary %> <%= form.text_area :commentary, rows: 4, style: "width: 100%" %></div>
-    <div style="margin-top: 15px;"><strong>Attachments:</strong><br><%= form.file_field :attachments, multiple: true %></div>
+    <div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
+    <strong>Attachments & Photos:</strong>
+    
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; margin-top: 10px;">
+      <%= form.fields_for :report_attachments do |attachment_form| %>
+        <% if attachment_form.object.persisted? %>
+          <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px; width: 200px; background: #fff;">
+            
+            <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #eee; margin-bottom: 5px; overflow: hidden;">
+              <% if attachment_form.object.file.representable? %>
+                <%# It is an image: Show it %>
+                <%= image_tag attachment_form.object.file.variant(resize_to_limit: [200, 150]), style: "max-width: 100%; max-height: 100%;" %>
+              <% else %>
+                <%# Not an image: Show generic Icon %>
+                <div style="text-align: center; color: #666;">
+                  <span style="font-size: 3em;">📄</span><br>
+                  <%= attachment_form.object.file.filename.to_s.truncate(20) %>
+                </div>
+              <% end %>
+            </div>
+
+            <%= attachment_form.label :caption, "Caption:" %>
+            <%= attachment_form.text_field :caption, style: "width: 100%; margin-bottom: 5px;" %>
+            
+            <div style="text-align: right; margin-top: 5px;">
+              <label style="color: red; cursor: pointer; font-size: 0.9em;">
+                <%= attachment_form.check_box :_destroy %> Delete
+              </label>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div id="new-attachments-container">
+      </div>
+    
+    <button type="button" id="add-attachment-btn" style="background-color: #17a2b8; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 4px;">
+      + Add Photo/Document
+    </button>
+  </div>
   </div>
 
   <%= form.submit "Save Report", style: "background-color: green; color: white; padding: 10px 20px; font-size: 1.2em; width: 100%; cursor: pointer;" %>
 <% end %>
+
+<template id="attachment-template">
+  <div class="attachment-row" style="border: 1px dashed #ccc; padding: 10px; margin-bottom: 10px; background: #f9f9f9; display: flex; align-items: flex-start; gap: 10px;">
+    <div style="flex: 1;">
+      <label>Select File:</label>
+      <input type="file" name="report[report_attachments_attributes][NEW_RECORD][file]" accept="image/*,.pdf,.doc,.docx" required>
+    </div>
+    <div style="flex: 2;">
+      <label>Caption:</label>
+      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Describe this photo..." style="width: 100%;">
+    </div>
+    <button type="button" class="remove-row-btn" style="background: none; border: none; color: red; cursor: pointer; font-weight: bold;">X</button>
+  </div>
+</template>
 
 <template id="equipment-template">
   <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
@@ -196,6 +250,39 @@ function initializeFormLogic() {
       qaSection.style.display = this.checked ? 'block' : 'none';
     });
     qaSection.style.display = qaCheck.checked ? 'block' : 'none';
+
+  // 4. ATTACHMENT ADDER LOGIC
+  const addAttachBtn = document.getElementById("add-attachment-btn");
+  const attachContainer = document.getElementById("new-attachments-container");
+  const attachTemplate = document.getElementById("attachment-template");
+
+  if(addAttachBtn && attachTemplate && attachContainer) {
+    // Clone button to prevent double-binding if function runs twice
+    const newAttachBtn = addAttachBtn.cloneNode(true);
+    addAttachBtn.parentNode.replaceChild(newAttachBtn, addAttachBtn);
+
+    newAttachBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      
+      const clone = attachTemplate.content.cloneNode(true);
+      const uniqueId = new Date().getTime();
+      
+      // Update names to have unique IDs so Rails accepts them
+      clone.querySelectorAll("input").forEach(input => {
+        input.name = input.name.replace("NEW_RECORD", uniqueId);
+      });
+
+      // Add "Remove" functionality to the X button
+      const removeBtn = clone.querySelector(".remove-row-btn");
+      if(removeBtn) {
+        removeBtn.addEventListener("click", function(e) {
+          e.target.closest(".attachment-row").remove();
+        });
+      }
+      
+      attachContainer.appendChild(clone);
+    });
+  }  
   }
 }
 

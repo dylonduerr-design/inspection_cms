@@ -27,6 +27,9 @@ class Report < ApplicationRecord
   has_many :inspection_entries, dependent: :destroy
   accepts_nested_attributes_for :inspection_entries, allow_destroy: true, reject_if: :all_blank
 
+  has_many :report_attachments, dependent: :destroy
+  accepts_nested_attributes_for :report_attachments, allow_destroy: true
+
   has_many :equipment_entries, dependent: :destroy
   accepts_nested_attributes_for :equipment_entries, allow_destroy: true, reject_if: :all_blank
 
