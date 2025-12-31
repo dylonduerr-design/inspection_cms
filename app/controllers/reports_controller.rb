@@ -3,20 +3,31 @@ require 'csv'
 class ReportsController < ApplicationController
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision ]
 
-  # GET /reports
+ # GET /reports
   def index
     # 1. Default to 'creating' if no status is provided
-    if params[:status].blank?
-      params[:status] = 'creating'
+    params[:status] = 'creating' if params[:status].blank?
+
+    # 2. DETERMINE VISIBILITY (The "Private vs. Public" Logic)
+    if ['creating', 'revise'].include?(params[:status])
+      # PRIVATE MODES: Only show reports belonging to the logged-in user
+      @reports = current_user.reports
+    else
+      # PUBLIC MODES (QC, Auth, All): Show everyone's reports
+      @reports = Report.all
     end
 
-    # 2. Start the query
-    @reports = Report.all
-
-    # 3. Apply the Status filter (UNLESS the user specifically asked for 'all')
+    # 3. Apply the Status filter
+    # We still need this to filter the specific status (e.g., only 'qc_review')
     if params[:status] != 'all'
       @reports = @reports.where(status: params[:status])
     end
+
+    # ... (Keep the rest of your filters for inspector, project, etc. exactly the same) ...
+    if params[:inspector].present?
+      @reports = @reports.where("inspector ILIKE ?", "%#{params[:inspector]}%")
+    end
+    # ... etc ...
 
     # 4. Apply other filters
     if params[:inspector].present?

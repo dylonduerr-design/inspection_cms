@@ -11,6 +11,23 @@
       <code style="color: #ccc; word-break: break-all;"><%= params.to_json %></code>
     </div>
   </div>
+  
+  <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
+    <p><strong>5. Who am I?</strong> 
+      <% if user_signed_in? %>
+        ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
+      <% else %>
+        ❌ Not Logged In (Guest)
+      <% end %>
+    </p>
+    
+    <% if user_signed_in? %>
+       <div style="margin-top: 5px;">
+         <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
+       </div>
+    <% end %>
+  </div>
+</div>
 </div>
 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
   <div>
