@@ -126,3 +126,297 @@
   outline: none;
   background-color: white;
 }
+
+/* --- Page Layout --- */
+.report-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #333;
+}
+
+/* --- Header & Meta Data --- */
+.report-header {
+  background: #fff;
+  border-left: 5px solid #007bff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  padding: 20px;
+  margin-bottom: 30px;
+  border-radius: 4px;
+}
+
+.header-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.header-title h1 { margin: 0; font-size: 1.5rem; }
+
+.meta-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+.meta-item label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.meta-item .value { font-size: 1rem; font-weight: 500; }
+
+/* --- Status Badges --- */
+.status-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+.status-creating { background: #e3f2fd; color: #0d47a1; }
+.status-pending { background: #fff3cd; color: #856404; }
+.status-approved { background: #d4edda; color: #155724; }
+
+/* --- Tables --- */
+.report-section { margin-bottom: 40px; }
+.modern-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.modern-table th { text-align: left; background: #f8f9fa; padding: 12px; border-bottom: 2px solid #ddd; }
+.modern-table td { padding: 12px; border-bottom: 1px solid #eee; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.code-font { font-family: monospace; color: #555; }
+
+/* --- Workflow Actions --- */
+.action-bar-container {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 30px;
+}
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-primary { background-color: #007bff; }
+.btn-success { background-color: #28a745; }
+.btn-danger { background-color: #dc3545; }
+
+/* --- Attachments Gallery --- */
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+}
+.gallery-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+  background: #fff;
+}
+.thumbnail-area img { max-width: 100%; height: 120px; object-fit: cover; }
+.doc-icon { font-size: 3rem; line-height: 120px; background: #eee; }
+.caption { margin: 8px 0; font-weight: bold; font-size: 0.9rem; }
+
+/* --- Activity Feed --- */
+.feed-item {
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+.feed-date { font-size: 0.8rem; color: #999; }
+
+/* --- QC Panel Specifics --- */
+.qc-panel {
+  background-color: #fffbf0; /* Light warm background */
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.qc-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qc-header-row h4 {
+  margin: 0;
+  color: #856404;
+}
+
+.qc-divider {
+  height: 1px;
+  background-color: #eec;
+  margin: 15px 0;
+}
+
+/* Flexbox layout for the revision form */
+.revision-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.revision-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #b21f2d; /* Dark red for caution */
+}
+
+.input-group {
+  display: flex;
+  gap: 10px;
+}
+
+.revision-input {
+  flex-grow: 1; /* Input takes up all available space */
+  border: 1px solid #e0caca;
+}
+
+/* Make the textarea feel like a modern input */
+textarea.revision-input {
+  resize: none;
+  font-family: inherit;
+  min-height: 38px; /* Matches button height */
+  padding: 8px 12px;
+}
+
+/* --- Dashboard Layout --- */
+.dashboard-container {
+  max-width: 1200px; /* Wider than the report view to fit the table */
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- Dashboard Tabs --- */
+.dashboard-tabs {
+  display: flex;
+  gap: 5px;
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 0; /* Connects to the filter card visually */
+}
+
+.tab-link {
+  padding: 10px 20px;
+  text-decoration: none;
+  color: #666;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px; /* Overlap the border */
+  transition: all 0.2s;
+}
+
+.tab-link:hover {
+  color: #007bff;
+  background-color: #f8f9fa;
+  border-radius: 4px 4px 0 0;
+}
+
+.tab-link.active {
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
+  font-weight: bold;
+}
+
+/* --- Filter Card --- */
+.filter-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-top: none; /* Merges with tabs */
+  padding: 20px;
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 30px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  align-items: end; /* Aligns buttons with inputs */
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-sep { color: #888; }
+
+/* Buttons for Filter */
+.btn-secondary { background: #6c757d; color: white; }
+.btn-search { background: #007bff; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer;}
+.btn-clear { background: #fff; border: 1px solid #ccc; color: #333; padding: 8px 15px; border-radius: 4px; text-decoration: none; text-align: center;}
+
+/* --- Table Card --- */
+.table-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden; /* Clips corners */
+}
+
+.dashboard-table th {
+  background-color: #fff; /* Clean white header */
+  border-bottom: 2px solid #f1f1f1;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: #888;
+}
+
+.clickable-row:hover {
+  background-color: #fbfbfb;
+}
+
+.font-medium { font-weight: 500; color: #333; }
+.text-success { color: #28a745; font-weight: 600; }
+.text-danger { color: #dc3545; font-weight: 600; }
+
+.dashboard-footer {
+  margin-top: 15px;
+  text-align: right;
+  color: #999;
+  font-size: 0.9rem;
+}

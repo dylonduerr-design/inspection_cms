@@ -3,12 +3,12 @@ require 'csv'
 class ReportsController < ApplicationController
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision ]
 
- # GET /reports
+  # GET /reports
   def index
     # 1. Default to 'creating' if no status is provided
     params[:status] = 'creating' if params[:status].blank?
 
-    # 2. DETERMINE VISIBILITY (The "Private vs. Public" Logic)
+    # 2. DETERMINE VISIBILITY
     if ['creating', 'revise'].include?(params[:status])
       # PRIVATE MODES: Only show reports belonging to the logged-in user
       @reports = current_user.reports
@@ -18,16 +18,9 @@ class ReportsController < ApplicationController
     end
 
     # 3. Apply the Status filter
-    # We still need this to filter the specific status (e.g., only 'qc_review')
     if params[:status] != 'all'
       @reports = @reports.where(status: params[:status])
     end
-
-    # ... (Keep the rest of your filters for inspector, project, etc. exactly the same) ...
-    if params[:inspector].present?
-      @reports = @reports.where("inspector ILIKE ?", "%#{params[:inspector]}%")
-    end
-    # ... etc ...
 
     # 4. Apply other filters
     if params[:inspector].present?
@@ -48,6 +41,15 @@ class ReportsController < ApplicationController
     
     if params[:end_date].present?
       @reports = @reports.where("inspection_date <= ?", params[:end_date])
+    end
+    
+    if params[:result].present?
+      if params[:result] == 'pending'
+        # Pending means the result is null
+        @reports = @reports.where(result: [nil, ''])
+      else
+        @reports = @reports.where(result: params[:result])
+      end
     end
 
     # 5. Handle the Export
@@ -90,7 +92,7 @@ class ReportsController < ApplicationController
         render plain: csv_data
       end
     end
-  end # <--- THIS IS THE CORRECT END FOR THE INDEX METHOD
+  end
 
   # GET /reports/1
   def show
@@ -105,20 +107,16 @@ class ReportsController < ApplicationController
 
   # GET /reports/1/edit
   def edit
-    @report.inspection_entries.build
-    @report.equipment_entries.build
+    @report.inspection_entries.build if @report.inspection_entries.empty?
+    @report.equipment_entries.build if @report.equipment_entries.empty?
   end
 
-# POST /reports
+  # POST /reports
   def create
-    # OLD WAY: @report = Report.new(report_params)
-    
-    # NEW WAY: Build the report specifically for the current user
     @report = current_user.reports.build(report_params) 
-
     @report.status ||= :creating
     
-    if @report.save!
+    if @report.save
       redirect_to report_url(@report), notice: "Report was successfully created."
     else
       render :new, status: :unprocessable_entity
@@ -144,7 +142,7 @@ class ReportsController < ApplicationController
 
   def submit_for_qc
     @report.update(status: :qc_review)
-    redirect_to @report, notice: "Report submitted to QC."
+    redirect_to reports_path, notice: "Report submitted to QC."
   end
 
   def approve

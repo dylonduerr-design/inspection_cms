@@ -1,146 +1,172 @@
-<button id="detective-toggle-btn" title="Toggle Debugger"> 🐞
+<button id="detective-toggle-btn" title="Toggle Debugger" 
+        style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; border: none; background: none; font-size: 2rem; cursor: pointer; opacity: 0.7;"
+        onclick="toggleDetective()"> 
+  🐞
 </button>
 
-<div id="detective-window" class="detective-hidden">
-
-    <div style="background-color: #222; color: #0f0; padding: 20px; margin-bottom: 20px; border: 2px solid #0f0; font-family: monospace;">
-      <h3 style="margin-top: 0; color: #0f0;">🕵️ Detective Report</h3>
-      <div style="display: grid; grid-template-columns: 1fr 1fr;">
-        <div>
-          <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
-          <p><strong>2. Reports in this List:</strong> <%= @reports.count %></p>
-          <p><strong>3. Current Status Filter:</strong> "<%= params[:status] %>"</p>
-        </div>
-        <div>
-          <p><strong>4. Current Params:</strong></p>
-          <code style="color: #ccc; word-break: break-all;"><%= params.to_json %></code>
-        </div>
-      </div>
-      
-      <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
-        <p><strong>5. Who am I?</strong> 
-          <% if user_signed_in? %>
-            ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
-          <% else %>
-            ❌ Not Logged In (Guest)
-          <% end %>
-        </p>
-        
-        <% if user_signed_in? %>
-            <div style="margin-top: 5px;">
-              <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
-            </div>
-        <% end %>
-      </div>
+<div id="detective-window" style="display: none; background-color: #222; color: #0f0; padding: 20px; margin-bottom: 20px; border: 2px solid #0f0; font-family: monospace;">
+  <h3 style="margin-top: 0; color: #0f0;">🕵️ Detective Report</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div>
+      <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
+      <p><strong>2. Reports in this List:</strong> <%= @reports.count %></p>
+      <p><strong>3. Current Status Filter:</strong> "<%= params[:status] %>"</p>
     </div>
-    </div>
-</div>
-</div>
-<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
-  <div>
-    <h1 style="margin-bottom: 15px;">Inspection Dashboard</h1>
-    
-    <div style="border-bottom: 2px solid #ddd;">
-      <% Report.statuses.keys.each do |status| %>
-        <%= link_to status.humanize, 
-            reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id).merge(status: status)), 
-            style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #{params[:status] == status ? '#000' : '#007bff'}; border: 1px solid #ddd; border-bottom: none; background-color: #{params[:status] == status ? '#fff' : '#f9f9f9'}; font-weight: #{params[:status] == status ? 'bold' : 'normal'}; margin-bottom: -2px; border-radius: 5px 5px 0 0;" %>
-      <% end %>
-      <%= link_to "All Reports", reports_path(status: 'all'), style: "display: inline-block; padding: 10px 20px; text-decoration: none; color: #666; margin-left: 10px;" %>
+    <div>
+      <p><strong>4. Current Params:</strong></p>
+      <code style="color: #ccc; word-break: break-all;"><%= params.to_json %></code>
     </div>
   </div>
-
-  <div style="padding-bottom: 5px;">
-    <%= link_to "Create New Report", new_report_path, class: "button", style: "background-color: green; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;" %>
-  </div>
-</div>
-
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-  <h2 style="color: #555; font-size: 1.5rem; margin: 0;">Filter and Search</h2>
   
-  <div>
-    <%= link_to "Export to Excel (CSV)", reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id, :status).merge(format: :csv)), style: "background-color: #17a2b8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;" %>
+  <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
+    <p><strong>5. Who am I?</strong> 
+      <% if user_signed_in? %>
+        ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
+      <% else %>
+        ❌ Not Logged In (Guest)
+      <% end %>
+    </p>
+    
+    <% if user_signed_in? %>
+        <div style="margin-top: 5px;">
+          <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
+        </div>
+    <% end %>
   </div>
 </div>
 
-<div style="background-color: #f0f0f0; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px;">
-  <%= form_with url: reports_path, method: :get, local: true do |form| %>
-    <%= hidden_field_tag :status, params[:status] %>
-    
-    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;">
-      
-      <div>
-        <%= form.label :start_date, "From:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
-        <%= form.date_field :start_date, value: params[:start_date], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px;" %>
-      </div>
-      <div>
-        <%= form.label :end_date, "To:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
-        <%= form.date_field :end_date, value: params[:end_date], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px;" %>
-      </div>
+<div class="dashboard-container">
 
-      <div style="flex-grow: 1;">
-        <%= form.label :inspector, "Inspection By:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
-        <%= form.text_field :inspector, value: params[:inspector], placeholder: "Type name...", style: "width: 100%; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" %>
-      </div>
-
-      <div>
-        <%= form.label :project_id, "Segment:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
-        <%= form.collection_select :project_id, Project.all, :id, :name, { include_blank: "All" }, { selected: params[:project_id], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;" } %>
-      </div>
-
-      <div>
-        <%= form.label :bid_item_id, "Contains Bid Item:", style: "font-weight: bold; display: block; margin-bottom: 5px;" %>
-        <%= form.collection_select :bid_item_id, BidItem.all, :id, :code, { include_blank: "All" }, { selected: params[:bid_item_id], style: "padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;" } %>
-      </div>
-
-      <div style="display: flex; gap: 10px;">
-        <%= form.submit "Search", style: "background-color: #007bff; color: white; padding: 10px 25px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;" %>
-        <%= link_to "Clear", reports_path(status: params[:status]), style: "color: #666; text-decoration: none; padding: 10px 15px; border: 1px solid #ccc; border-radius: 4px; background: white;" %>
-      </div>
-
+  <div class="dashboard-header">
+    <h1>Inspection Dashboard</h1>
+    <div class="header-actions">
+      <%= link_to "Export to Excel", reports_path(request.query_parameters.merge(format: :csv)), class: "btn btn-secondary" %>
+      <%= link_to "Create New Report", new_report_path, class: "btn btn-primary" %>
     </div>
-  <% end %>
+  </div>
+
+  <div class="dashboard-tabs">
+    <% statuses = ['creating', 'qc_review', 'revise', 'authorization', 'all'] %>
+    
+    <% statuses.each do |status| %>
+      <%= link_to status.humanize.titleize, 
+          reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id, :result).merge(status: status)), 
+          class: "tab-link #{'active' if params[:status] == status || (params[:status].blank? && status == 'creating')}" 
+      %>
+    <% end %>
+  </div>
+
+  <div class="filter-card">
+    <%= form_with url: reports_path, method: :get, local: true, class: "search-form" do |form| %>
+      <%= hidden_field_tag :status, params[:status] %>
+
+      <div class="filter-grid">
+        <div class="filter-group">
+          <label>Date Range</label>
+          <div class="date-inputs">
+            <%= form.date_field :start_date, value: params[:start_date], class: "form-input", placeholder: "From" %>
+            <span class="range-sep">-</span>
+            <%= form.date_field :end_date, value: params[:end_date], class: "form-input", placeholder: "To" %>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Inspector</label>
+          <%= form.text_field :inspector, value: params[:inspector], placeholder: "Name...", class: "form-input" %>
+        </div>
+
+        <div class="filter-group">
+          <label>Result</label>
+          <%= select_tag :result, 
+              options_for_select([['Pass', 'pass'], ['Fail', 'fail'], ['Pending', 'pending']], params[:result]), 
+              prompt: "All Results", 
+              class: "form-input" %>
+        </div>
+
+        <div class="filter-group">
+          <label>Segment</label>
+          <%= form.collection_select :project_id, Project.all, :id, :name, { include_blank: "All Projects" }, { selected: params[:project_id], class: "form-input" } %>
+        </div>
+
+        <div class="filter-group">
+          <label>Contains Bid Item</label>
+          <%= form.collection_select :bid_item_id, BidItem.all, :id, :code, { include_blank: "All Items" }, { selected: params[:bid_item_id], class: "form-input" } %>
+        </div>
+
+        <div class="filter-actions">
+          <%= form.submit "Search", class: "btn btn-search" %>
+          <%= link_to "Clear", reports_path(status: params[:status]), class: "btn btn-clear" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="table-card">
+    <table class="modern-table dashboard-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Inspector</th>
+          <th>Project</th>
+          <th>Phase</th>
+          <th>Result</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @reports.any? %>
+          <% @reports.each do |report| %>
+            <tr class="clickable-row">
+              <td><%= report.inspection_date %></td>
+              <td class="font-medium"><%= report.inspector %></td>
+              <td><%= report.project&.name %></td>
+              <td><%= report.phase&.name %></td>
+              <td>
+                <% if report.result == 'pass' %>
+                  <span class="text-success">Pass</span>
+                <% elsif report.result == 'fail' %>
+                  <span class="text-danger">Fail</span>
+                <% else %>
+                  <span class="text-muted">Pending</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="status-badge status-<%= report.status %>">
+                  <%= report.status&.humanize %>
+                </span>
+              </td>
+              <td class="text-right">
+                <%= link_to "View", report_path(report), class: "link-primary" %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="7" class="text-center py-5" style="padding: 30px; text-align: center; color: #888;">
+              <div class="empty-state-message">
+                No reports found matching these criteria.
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="dashboard-footer">
+    Showing <%= @reports.count %> reports
+  </div>
+
 </div>
 
-<table style="width: 100%; border-collapse: collapse;">
-  <thead style="background-color: #eee;">
-    <tr>
-      <th style="padding: 10px; text-align: left;">Date</th>
-      <th style="padding: 10px; text-align: left;">Inspector</th>
-      <th style="padding: 10px; text-align: left;">Project</th>
-      <th style="padding: 10px; text-align: center;">Result</th>
-      <th style="padding: 10px; text-align: center;">Status</th>
-      <th style="padding: 10px; text-align: center;">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if @reports.any? %>
-      <% @reports.each do |report| %>
-        <tr style="border-bottom: 1px solid #eee; background-color: <%= cycle('white', '#fafafa') %>;">
-          <td style="padding: 10px;"><%= report.inspection_date %></td>
-          <td style="padding: 10px;"><%= report.inspector %></td>
-          <td style="padding: 10px;"><%= report.project&.name %></td>
-          <td style="padding: 10px; text-align: center;">
-            <span style="color: <%= report.result == 'pass' ? 'green' : (report.result == 'fail' ? 'red' : 'gray') %>; font-weight: bold;">
-              <%= report.result&.humanize %>
-            </span>
-          </td>
-          <td style="padding: 10px; text-align: center;">
-            <span style="background-color: #e9ecef; padding: 4px 8px; border-radius: 10px; font-size: 0.9em;">
-              <%= report.status&.humanize %>
-            </span>
-          </td>
-          <td style="padding: 10px; text-align: center;">
-            <%= link_to "View", report_path(report), style: "color: #007bff; text-decoration: none; margin-right: 5px;" %>
-          </td>
-        </tr>
-      <% end %>
-    <% else %>
-      <tr>
-        <td colspan="6" style="padding: 20px; text-align: center; color: #666; font-style: italic;">
-          No reports found for this filter.
-        </td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+<script>
+  function toggleDetective() {
+    var x = document.getElementById("detective-window");
+    if (x.style.display === "none") {
+      x.style.display = "block";
+    } else {
+      x.style.display = "none";
+    }
+  }
+</script>

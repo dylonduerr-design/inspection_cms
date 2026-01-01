@@ -1,135 +1,154 @@
-<p style="color: green"><%= notice %></p>
-<p style="color: red"><%= alert %></p>
-
-<h1>Daily Inspection Report #<%= @report.dir_number %></h1>
-
-<div style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; background-color: #f9f9f9;">
-  <div style="display: flex; justify-content: space-between;">
-    <div>
-      <p><strong>Date:</strong> <%= @report.inspection_date %></p>
-      <p><strong>Inspector:</strong> <%= @report.inspector %></p>
-      <p><strong>Project:</strong> <%= @report.project&.name %></p>
-    </div>
-    <div>
-      <p><strong>Phase:</strong> <%= @report.phase&.name %></p>
-      <p><strong>Status:</strong> 
-        <span style="background-color: #e2e3e5; padding: 2px 6px; border-radius: 4px;">
-          <%= @report.status&.humanize || "Unknown" %>
-        </span>
-      </p>
-      <%= @report.result&.humanize || "Pending" %>
-    </div>
-  </div>
-</div>
-
-<h3>Quantities Reported</h3>
-<% if @report.inspection_entries.any? %>
-  <table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%;">
-    <thead>
-      <tr style="background-color: #eee;">
-        <th style="text-align: left;">Bid Item</th>
-        <th style="text-align: left;">Description</th>
-        <th style="text-align: left;">Location</th>
-        <th style="text-align: right;">Quantity</th>
-        <th style="text-align: center;">Unit</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @report.inspection_entries.each do |entry| %>
-        <tr>
-          <td><%= entry.bid_item.code %></td>
-          <td><%= entry.bid_item.description %></td>
-          <td><%= entry.location %></td>
-          <td style="text-align: right;"><%= entry.quantity %></td>
-          <td style="text-align: center;"><%= entry.bid_item.unit %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-<% else %>
-  <p><em>No quantities recorded for this report.</em></p>
-<% end %>
-
-<div style="margin-top: 30px; padding: 20px; background-color: #f1f1f1; border-top: 2px solid #ddd;">
+<div class="report-container">
   
-  <% if @report.creating? || @report.revise? %>
-    <%= button_to "Submit for QC Review", submit_for_qc_report_path(@report), method: :post, style: "background-color: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer;" %>
-    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">(Moves report to QC Tab)</p>
+  <% if notice %>
+    <div class="alert alert-success"><%= notice %></div>
+  <% end %>
+  <% if alert %>
+    <div class="alert alert-danger"><%= alert %></div>
   <% end %>
 
-  <% if @report.qc_review? %>
-    <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px;">
-      <h4 style="margin-top: 0;">QC Decision</h4>
-      
-      <%= button_to "Approve & Authorize", approve_report_path(@report), method: :post, style: "background-color: green; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-bottom: 15px;" %>
-      
-      <hr style="border-top: 1px solid #ccc;">
-      
-      <%= form_with url: request_revision_report_path(@report), method: :post, local: true do |f| %>
-        <p><strong>Return for Revision:</strong></p>
-        <%= text_area_tag 'note', nil, placeholder: "Enter reason for rejection...", rows: 2, style: "width: 100%; margin-bottom: 10px;" %>
-        <%= f.submit "Return to Inspector", style: "background-color: #dc3545; color: white; padding: 5px 15px; border: none; cursor: pointer;" %>
-      <% end %>
+  <div class="report-header">
+    <div class="header-title">
+      <h1>Daily Inspection Report #<%= @report.dir_number %></h1>
+      <span class="status-badge status-<%= @report.status %>">
+        <%= @report.status&.humanize || "Unknown" %>
+      </span>
     </div>
-  <% end %>
+    
+    <div class="meta-data-grid">
+      <div class="meta-item">
+        <label>Date</label>
+        <div class="value"><%= @report.inspection_date %></div>
+      </div>
+      <div class="meta-item">
+        <label>Inspector</label>
+        <div class="value"><%= @report.inspector %></div>
+      </div>
+      <div class="meta-item">
+        <label>Project</label>
+        <div class="value"><%= @report.project&.name %></div>
+      </div>
+      <div class="meta-item">
+        <label>Phase</label>
+        <div class="value"><%= @report.phase&.name %></div>
+      </div>
+      <div class="meta-item">
+        <label>Result</label>
+        <div class="value"><%= @report.result&.humanize || "Pending" %></div>
+      </div>
+    </div>
+  </div>
 
-  <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
-    <%= link_to "Edit Details", edit_report_path(@report), style: "margin-right: 10px;" %> | 
-    <%= link_to "Back to List", reports_path, style: "margin-left: 10px;" %>
+  <div class="report-section">
+    <h3>Quantities Reported</h3>
+    <% if @report.inspection_entries.any? %>
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>Bid Item</th>
+            <th>Description</th>
+            <th>Location</th>
+            <th class="text-right">Quantity</th>
+            <th class="text-center">Unit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @report.inspection_entries.each do |entry| %>
+            <tr>
+              <td class="code-font"><%= entry.bid_item.code %></td>
+              <td><%= entry.bid_item.description %></td>
+              <td><%= entry.location %></td>
+              <td class="text-right font-bold"><%= entry.quantity %></td>
+              <td class="text-center text-muted"><%= entry.bid_item.unit %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="empty-state">No quantities recorded for this report.</div>
+    <% end %>
+  </div>
+
+  <div class="action-bar-container">
+    <% if @report.creating? || @report.revise? %>
+      <div class="primary-actions">
+        <%= button_to "Submit for QC Review", submit_for_qc_report_path(@report), method: :post, class: "btn btn-primary" %>
+        <span class="hint-text">(Moves report to QC Tab)</span>
+      </div>
+    <% end %>
+
+    <% if @report.qc_review? %>
+   <div class="qc-panel">
+  <div class="qc-header-row">
+    <h4>QC Decision</h4>
+    <%= button_to "Approve & Authorize", approve_report_path(@report), method: :post, class: "btn btn-success" %>
+  </div>
+  <% end %>
+  <div class="qc-divider"></div>
+  
+  <div class="qc-revision-row">
+    <%= form_with url: request_revision_report_path(@report), method: :post, local: true, class: "revision-form" do |f| %>
+      <label class="revision-label">Return for Revision:</label>
+      <div class="input-group">
+        <%= text_area_tag 'note', nil, placeholder: "Enter reason for rejection...", rows: 1, class: "form-input revision-input" %>
+        <%= f.submit "Return to Inspector", class: "btn btn-danger" %>
+      </div>
+    <% end %>
   </div>
 </div>
 
-<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-  <h3>Attached Documents & Photos</h3>
-
-  <% if @report.report_attachments.any? %>
-    <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-      <% @report.report_attachments.each do |attachment| %>
-        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px; width: 220px; text-align: center;">
-          
-          <div style="margin-bottom: 10px; height: 150px; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9; overflow: hidden;">
-            <% if attachment.file.representable? %>
-              <%= link_to rails_blob_path(attachment.file, disposition: "attachment"), target: "_blank" do %>
-                <% if attachment.file.image? %>
-                   <%= image_tag attachment.file, style: "max-width: 100%; max-height: 150px;" %>
-                <% else %>
-                   <span style="font-size: 4em;">📄</span>
-                <% end %>
-              <% end %>
-            <% else %>
-              <span style="font-size: 3em;">📂</span>
-            <% end %>
-          </div>
-
-          <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.9em;">
-            <%= attachment.caption.presence || "(No Caption)" %>
-          </div>
-          
-          <div style="font-size: 0.8em; color: #666;">
-            <%= link_to "Download #{attachment.file.filename}", rails_blob_path(attachment.file, disposition: "attachment") %>
-          </div>
-        </div>
-      <% end %>
+    <div class="nav-links">
+      <%= link_to "Edit Details", edit_report_path(@report) %>
+      <span class="divider">|</span>
+      <%= link_to "Back to List", reports_path %>
     </div>
-  <% else %>
-    <p style="color: #666; font-style: italic;">No attachments found.</p>
-  <% end %>
-</div>
+  </div>
 
-<div style="margin-top: 40px;">
-  <h3>Activity Log</h3>
-  <% if @report.activity_logs.any? %>
-    <ul style="list-style: none; padding: 0;">
-      <% @report.activity_logs.order(created_at: :desc).each do |log| %>
-        <li style="border-bottom: 1px solid #eee; padding: 10px 0;">
-          <strong><%= log.user %></strong> 
-          <span style="color: #888; font-size: 0.85em;">(<%= log.created_at.strftime("%b %d, %I:%M %p") %>)</span>:
-          <br>
-          <%= log.note %>
-        </li>
-      <% end %>
-    </ul>
-  <% else %>
-    <p style="color: #666;">No activity recorded yet.</p>
-  <% end %>
-</div>
+  <div class="report-section">
+    <h3>Attached Documents & Photos</h3>
+    <% if @report.report_attachments.any? %>
+      <div class="gallery-grid">
+        <% @report.report_attachments.each do |attachment| %>
+          <div class="gallery-card">
+            <div class="thumbnail-area">
+              <% if attachment.file.representable? %>
+                <%= link_to rails_blob_path(attachment.file, disposition: "attachment"), target: "_blank" do %>
+                  <% if attachment.file.image? %>
+                    <%= image_tag attachment.file %>
+                  <% else %>
+                    <div class="doc-icon">📄</div>
+                  <% end %>
+                <% end %>
+              <% else %>
+                <div class="doc-icon">📂</div>
+              <% end %>
+            </div>
+            <div class="caption"><%= attachment.caption.presence || "(No Caption)" %></div>
+            <div class="download-link">
+              <%= link_to "Download", rails_blob_path(attachment.file, disposition: "attachment") %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="empty-text">No attachments found.</p>
+    <% end %>
+  </div>
+
+  <div class="report-section">
+    <h3>Activity Log</h3>
+    <% if @report.activity_logs.any? %>
+      <div class="activity-feed">
+        <% @report.activity_logs.order(created_at: :desc).each do |log| %>
+          <div class="feed-item">
+            <div class="feed-user"><strong><%= log.user %></strong></div>
+            <div class="feed-date"><%= log.created_at.strftime("%b %d, %I:%M %p") %></div>
+            <div class="feed-note"><%= log.note %></div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="empty-text">No activity recorded yet.</p>
+    <% end %>
+  </div>
+
