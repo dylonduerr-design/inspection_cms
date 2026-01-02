@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_02_183426) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_02_204333) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -93,6 +93,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_02_183426) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "report_attachments", force: :cascade do |t|
+    t.bigint "report_id", null: false
+    t.string "caption"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_id"], name: "index_report_attachments_on_report_id"
+  end
+
   create_table "reports", force: :cascade do |t|
     t.string "dir_number"
     t.date "inspection_date"
@@ -152,6 +160,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_02_183426) do
   add_foreign_key "equipment_entries", "reports"
   add_foreign_key "inspection_entries", "bid_items"
   add_foreign_key "inspection_entries", "reports"
+  add_foreign_key "report_attachments", "reports"
   add_foreign_key "reports", "phases"
   add_foreign_key "reports", "projects"
   add_foreign_key "reports", "users"

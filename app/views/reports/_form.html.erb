@@ -76,6 +76,7 @@
     <%# Helper Lambda for labels %>
     <% pretty_label = ->(key) { key.to_s.humanize.gsub("Tc ", "").gsub("Env ", "").gsub("Sec ", "") } %>
 
+    <%# --- PROBLEM 1 FIX: Deficiency Section with Alert Styling --- %>
     <div class="form-row">
       <div class="form-group full-width">
         <label>Deficiencies Identified?</label>
@@ -88,13 +89,14 @@
           <% end %>
         </div>
         
-        <div id="deficiency-note" class="conditional-field" style="display: none;">
-          <label>Description of Deficiency</label>
-          <%= form.text_area :deficiency_desc, rows: 3 %>
+        <div id="deficiency-note" class="conditional-field" style="display: none; background-color: var(--bg-alert); border-left: 4px solid var(--border-alert); padding: 15px;">
+          <label style="color: var(--danger); font-weight: bold;">Description of Deficiency</label>
+          <%= form.text_area :deficiency_desc, rows: 3, style: "background-color: white;" %>
         </div>
       </div>
     </div>
 
+    <%# --- PROBLEM 1 FIX: Safety Section with Alert Styling --- %>
     <div class="form-row">
       <div class="form-group full-width">
         <label>Safety Incidents?</label>
@@ -107,9 +109,9 @@
           <% end %>
         </div>
 
-        <div id="safety-note" class="conditional-field" style="display: none;">
-          <label>Describe Incident</label>
-          <%= form.text_area :safety_desc, rows: 3 %>
+        <div id="safety-note" class="conditional-field" style="display: none; background-color: var(--bg-alert); border-left: 4px solid var(--border-alert); padding: 15px;">
+          <label style="color: var(--danger); font-weight: bold;">Describe Incident</label>
+          <%= form.text_area :safety_desc, rows: 3, style: "background-color: white;" %>
         </div>
       </div>
     </div>
@@ -145,24 +147,31 @@
     
     <hr style="margin: 1.5rem 0;">
     
-    <div class="form-group full-width">
-      <label>
-        <%= form.check_box :qa_activity, id: "qa_check" %> QA Testing Performed?
+<%# --- PROBLEM 2 FIX: QA Layout (Corrected) --- %>
+    <div class="qa-wrapper" style="margin-bottom: 1rem;">
+      <label style="display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.1em; color: var(--primary); cursor: pointer;">
+        <%= form.check_box :qa_activity, id: "qa_check", style: "width: auto; margin: 0; cursor: pointer;" %> 
+        QA Testing Performed?
       </label>
-      <div id="qa-section" style="display: none; margin-top: 10px; padding: 10px; background: #f8f9fa;">
-        <div class="form-row">
-          <div class="form-group">
+      
+      <div id="qa-section" style="display: none; margin-top: 15px; padding: 20px; background: var(--bg-header); border: 1px solid var(--border-color); border-radius: 6px;">
+        <div class="form-row" style="display: flex; gap: 20px; align-items: flex-start;">
+          
+          <div class="form-group" style="flex: 1;">
             <label>Item</label>
-            <%= form.collection_select :qa_bid_item_id, BidItem.all, :id, :code, {include_blank: true} %>
+            <%= form.collection_select :qa_bid_item_id, BidItem.all, :id, :code, {include_blank: true}, {class: "form-control", style: "width: 100%"} %>
           </div>
-          <div class="form-group">
+          
+          <div class="form-group" style="flex: 1;">
             <label>Type</label>
-            <%= form.select :qa_type, Report.qa_types.keys.map{|k| [k.humanize, k]}, {include_blank: true} %>
+            <%= form.select :qa_type, Report.qa_types.keys.map{|k| [k.humanize, k]}, {include_blank: true}, {class: "form-control", style: "width: 100%"} %>
           </div>
-          <div class="form-group">
+          
+          <div class="form-group" style="flex: 1;">
             <label>Result</label>
-            <%= form.select :qa_result, Report.qa_results.keys.map{|k| [k.humanize, k]}, {include_blank: true} %>
+            <%= form.select :qa_result, Report.qa_results.keys.map{|k| [k.humanize, k]}, {include_blank: true}, {class: "form-control", style: "width: 100%"} %>
           </div>
+          
         </div>
       </div>
     </div>
@@ -227,29 +236,63 @@
     </div>
   </div>
 
-  <%# --- 6. PHOTOS & ATTACHMENTS (ActiveStorage) --- %>
+ <%# --- 6. PHOTOS & ATTACHMENTS --- %>
   <div class="form-card">
-    <h2>5. Photos</h2>
-    
-    <% if report.attachments.attached? %>
-      <div class="existing-photos" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-        <% report.attachments.each do |file| %>
-          <div style="border: 1px solid #ccc; padding: 5px; text-align: center;">
-            <% if file.representable? %>
-              <%= image_tag file.variant(resize_to_limit: [150, 150]) %>
-            <% else %>
-               <div>📄 <%= file.filename %></div>
+    <h2>5. Photos & Attachments</h2>
+
+    <div class="gallery-grid">
+      <%= form.fields_for :report_attachments do |attachment_form| %>
+        <div class="gallery-card">
+          
+          <div class="thumbnail-area">
+            <% if attachment_form.object.file.attached? %>
+              <% if attachment_form.object.file.representable? %>
+                <%= image_tag attachment_form.object.file.representation(resize_to_limit: [300, 300]) %>
+              <% else %>
+                <span class="doc-icon">📄</span>
+              <% end %>
             <% end %>
           </div>
-        <% end %>
-      </div>
-    <% end %>
 
-    <div class="form-group">
-      <label>Upload New Files (Select Multiple)</label>
-      <%= form.file_field :attachments, multiple: true, class: "form-control" %>
+          <div style="padding: 10px;">
+            <%= attachment_form.text_field :caption, 
+                placeholder: "Enter caption...", 
+                class: "form-group input", 
+                style: "width: 100%; margin-bottom: 5px;" %>
+            
+            <div class="download-link">
+              <% if attachment_form.object.file.attached? %>
+                <%= link_to attachment_form.object.file.filename.to_s, rails_blob_path(attachment_form.object.file, disposition: "attachment"), target: "_blank" %>
+              <% end %>
+            </div>
+            
+            <div style="text-align: left; margin-top: 5px; font-size: 0.85rem; color: var(--danger);">
+              <label>
+                <%= attachment_form.check_box :_destroy %> 
+                Delete
+              </label>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="conditional-field" style="margin-top: 20px;">
+      <label style="font-weight: bold; display: block; margin-bottom: 10px;">
+        + Upload New Photos/Documents
+      </label>
+      
+      <%= file_field_tag "report[report_attachments_attributes][][file]", 
+          multiple: true, 
+          class: "form-group input" %>
+          
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+        <i>Select multiple files. You can add captions after clicking "Save".</i>
+      </p>
     </div>
   </div>
+
+
 
   <div class="actions" style="margin-top: 2rem; text-align: right;">
     <%= form.submit "Save & Submit Report", class: "btn-primary-action" %>
@@ -270,8 +313,8 @@
   <div class="quantity-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
     <div style="flex: 2">
       <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]">
-         <option value="">Select Item</option>
-         <%= options_from_collection_for_select(BidItem.all, :id, :code) %>
+          <option value="">Select Item</option>
+          <%= options_from_collection_for_select(BidItem.all, :id, :code) %>
       </select>
     </div>
     <input style="flex: 1" type="text" placeholder="Location" name="report[inspection_entries_attributes][NEW_RECORD][location]">

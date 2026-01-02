@@ -130,7 +130,8 @@ class ReportsController < ApplicationController
         # Removed :report_attachments_attributes (deleted table)
         attachments: [], # Native ActiveStorage
         inspection_entries_attributes: [:id, :bid_item_id, :quantity, :location, :notes, :_destroy],
-        equipment_entries_attributes: [:id, :make_model, :hours, :_destroy]
+        equipment_entries_attributes: [:id, :make_model, :hours, :_destroy],
+        report_attachments_attributes: [:id, :caption, :file, :_destroy]
       )
     end
 
