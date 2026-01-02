@@ -1,6 +1,6 @@
 <%= form_with(model: report, id: "report-form", multipart: true) do |form| %>
   
-  <%# --- 1. ERROR HANDLING BLOCK (Corrected) --- %>
+  <%# --- 1. ERROR HANDLING --- %>
   <% if report.errors.any? %>
     <div class="error-explanation">
       <h2><%= pluralize(report.errors.count, "error") %> prohibited this report from being saved:</h2>
@@ -12,7 +12,7 @@
     </div>
   <% end %>
 
-  <%# --- 2. MAIN FORM CONTENT --- %>
+  <%# --- 2. GENERAL INFO --- %>
   <div class="form-card">
     <h2>1. General Information</h2>
 
@@ -22,23 +22,16 @@
         <%= form.date_field :inspection_date %>
       </div>
       <div class="form-group">
-        <label>Inspector</label>
-        <%= form.text_field :inspector %> 
+        <label>Contractor</label>
+        <%= form.text_field :contractor %>
       </div>
     </div>
 
     <div class="form-row">
-      <div class="form-group">
-        <label>Contractor</label>
-        <%= form.text_field :contractor %>
-      </div>
       <div class="form-group">
         <label>Project</label>
         <%= form.collection_select :project_id, Project.all, :id, :name, {}, {} %>
       </div>
-    </div>
-
-    <div class="form-row">
       <div class="form-group full-width">
         <label>Phase</label>
         <%= form.collection_select :phase_id, Phase.all, :id, :name, {}, {} %>
@@ -76,111 +69,87 @@
     </div>
   </div>
 
- <div class="form-card">
-  <h2>2. Inspection Checklist</h2>
+  <%# --- 3. CHECKLIST --- %>
+  <div class="form-card">
+    <h2>2. Inspection Checklist</h2>
 
-  <%# --- HELPER: MAP DATABASE KEYS TO CLEAN LABELS --- %>
-  <% 
-    deficiency_labels = { "no_deficiency" => "No", "yes_deficiency" => "Yes", "cdr" => "CDR", "ncr" => "NCR" }
-    safety_labels     = { "safety_no" => "No", "safety_yes" => "Yes", "safety_na" => "N/A" }
+    <%# Helper Lambda for labels %>
+    <% pretty_label = ->(key) { key.to_s.humanize.gsub("Tc ", "").gsub("Env ", "").gsub("Sec ", "") } %>
+
+    <div class="form-row">
+      <div class="form-group full-width">
+        <label>Deficiencies Identified?</label>
+        <div class="radio-group">
+          <% Report.deficiency_statuses.keys.each do |k| %>
+            <label class="radio-label">
+              <%= form.radio_button :deficiency_status, k, class: "deficiency-trigger" %> 
+              <span><%= pretty_label.call(k) %></span>
+            </label>
+          <% end %>
+        </div>
+        
+        <div id="deficiency-note" class="conditional-field" style="display: none;">
+          <label>Description of Deficiency</label>
+          <%= form.text_area :deficiency_desc, rows: 3 %>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group full-width">
+        <label>Safety Incidents?</label>
+        <div class="radio-group">
+          <% Report.safety_incidents.keys.each do |k| %>
+            <label class="radio-label">
+              <%= form.radio_button :safety_incident, k, class: "safety-trigger" %> 
+              <span><%= pretty_label.call(k) %></span>
+            </label>
+          <% end %>
+        </div>
+
+        <div id="safety-note" class="conditional-field" style="display: none;">
+          <label>Describe Incident</label>
+          <%= form.text_area :safety_desc, rows: 3 %>
+        </div>
+      </div>
+    </div>
+
+    <hr style="margin: 1.5rem 0;">
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Traffic Control?</label>
+        <div class="radio-group vertical">
+          <% Report.traffic_controls.keys.each do |k| %>
+            <label class="radio-label"><%= form.radio_button :traffic_control, k %> <span><%= pretty_label.call(k) %></span></label>
+          <% end %>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Environmental?</label>
+        <div class="radio-group vertical">
+          <% Report.environmentals.keys.each do |k| %>
+            <label class="radio-label"><%= form.radio_button :environmental, k %> <span><%= pretty_label.call(k) %></span></label>
+          <% end %>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Security?</label>
+        <div class="radio-group vertical">
+          <% Report.securities.keys.each do |k| %>
+            <label class="radio-label"><%= form.radio_button :security, k %> <span><%= pretty_label.call(k) %></span></label>
+          <% end %>
+        </div>
+      </div>
+    </div>
     
-    pretty_label = ->(key) {
-      k = key.to_s.downcase
-      return "N/A" if k.include?("na")
-      return "No" if k.include?("no")
-      return "Yes" if k.include?("yes")
-      key.humanize
-    }
-  %>
-
-  <div class="form-row">
+    <hr style="margin: 1.5rem 0;">
+    
     <div class="form-group full-width">
-      <label>Deficiencies Identified?</label>
-      <div class="radio-group">
-        <% Report.deficiency_statuses.keys.each do |k| %>
-          <label class="radio-label">
-            <%= form.radio_button :deficiency_status, k, class: "deficiency-trigger" %> 
-            <span><%= deficiency_labels[k] || pretty_label.call(k) %></span>
-          </label>
-        <% end %>
-      </div>
-      
-      <div id="deficiency-note" class="conditional-field" style="display: none;">
-        <label>Description of Deficiency</label>
-        <%= form.text_area :deficiency_desc, rows: 3, placeholder: "Describe the deficiency here..." %>
-      </div>
-    </div>
-  </div>
-
-  <div class="form-row">
-    <div class="form-group full-width">
-      <label>Safety Incidents?</label>
-      <div class="radio-group">
-        <% Report.safety_incidents.keys.each do |k| %>
-          <label class="radio-label">
-            <%= form.radio_button :safety_incident, k, class: "safety-trigger" %> 
-            <span><%= safety_labels[k] || pretty_label.call(k) %></span>
-          </label>
-        <% end %>
-      </div>
-
-      <div id="safety-note" class="conditional-field" style="display: none;">
-        <label>Describe Incident</label>
-        <%= form.text_area :safety_desc, rows: 3, placeholder: "Describe the safety incident..." %>
-      </div>
-    </div>
-  </div>
-
-  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
-
-  <div class="form-row">
-    <div class="form-group">
-      <label>Traffic Control Compliance?</label>
-      <div class="radio-group vertical">
-        <% Report.traffic_controls.keys.each do |k| %>
-          <label class="radio-label">
-            <%= form.radio_button :traffic_control, k %> 
-            <span><%= pretty_label.call(k) %></span>
-          </label>
-        <% end %>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label>Environmental/SWPPP Compliance?</label>
-      <div class="radio-group vertical">
-        <% Report.environmentals.keys.each do |k| %>
-          <label class="radio-label">
-            <%= form.radio_button :environmental, k %> 
-            <span><%= pretty_label.call(k) %></span>
-          </label>
-        <% end %>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label>Security and Air Ops Compliance?</label>
-      <div class="radio-group vertical">
-        <% Report.securities.keys.each do |k| %>
-          <label class="radio-label">
-            <%= form.radio_button :security, k %> 
-            <span><%= pretty_label.call(k) %></span>
-          </label>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
-
-  <div class="form-row">
-    <div class="form-group full-width">
-      <label style="font-size: 1.1rem; color: var(--text-main); cursor: pointer;">
-        <%= form.check_box :qa_activity, id: "qa_check", style: "width: auto; margin-right: 10px;" %> 
-        QA Testing Performed?
+      <label>
+        <%= form.check_box :qa_activity, id: "qa_check" %> QA Testing Performed?
       </label>
-
-      <div id="qa-section" class="qa-panel" style="display: none;">
+      <div id="qa-section" style="display: none; margin-top: 10px; padding: 10px; background: #f8f9fa;">
         <div class="form-row">
           <div class="form-group">
             <label>Item</label>
@@ -199,373 +168,183 @@
     </div>
   </div>
 
-</div>
-
+  <%# --- 4. CREW & EQUIPMENT (Nested Forms) --- %>
   <div class="form-card">
-  <h2>3. Crew & Equipment</h2>
-
-  <div class="form-row">
-    <div class="form-group full-width">
-      <label>Foreman Name</label>
-      <%= form.text_field :foreman, placeholder: "e.g. John Doe" %>
+    <h2>3. Crew & Equipment</h2>
+    
+    <div class="form-row">
+       <div class="form-group"><label>Foreman</label><%= form.text_field :foreman %></div>
+       <div class="form-group"><label>Laborers</label><%= form.number_field :laborer_count %></div>
+       <div class="form-group"><label>Operators</label><%= form.number_field :operator_count %></div>
+       <div class="form-group"><label>Surveyors</label><%= form.number_field :survey_count %></div>
     </div>
-  </div>
 
-  <div class="form-row">
-    <div class="form-group">
-      <label>Laborers</label>
-      <%= form.number_field :laborer_count, min: 0 %>
-    </div>
-    <div class="form-group">
-      <label>Operators</label>
-      <%= form.number_field :operator_count, min: 0 %>
-    </div>
-    <div class="form-group">
-      <label>Surveyors</label>
-      <%= form.number_field :survey_count, min: 0 %>
-    </div>
-  </div>
-
-  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
-
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-main);">🚜 Equipment Log</h3>
-  </div>
-
-  <div class="equipment-header" style="display: flex; gap: 10px; margin-bottom: 5px; font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">
-    <div style="flex: 3;">Make / Model</div>
-    <div style="flex: 1;">Hours</div>
-    <div style="width: 40px; text-align: center;"></div> </div>
-
-  <div id="equipment-fields-container">
-    <%= form.fields_for :equipment_entries do |eq_form| %>
-      <div class="equipment-row">
-        <%= eq_form.text_field :make_model, placeholder: "e.g. Cat D6 Dozer", style: "flex: 3;" %>
-        <%= eq_form.number_field :hours, step: 0.5, placeholder: "0.0", style: "flex: 1;" %>
-        
-        <% if eq_form.object.persisted? %>
-          <div style="width: 40px; display: flex; justify-content: center;">
-            <label class="delete-icon" title="Delete Line">
-              <%= eq_form.check_box :_destroy, style: "display: none;" %> 
-              ✕
-            </label>
-          </div>
-        <% end %>
-      </div>
-    <% end %>
-  </div>
-
-  <button type="button" id="add-equipment-btn" class="btn-secondary">
-    + Add Piece of Equipment
-  </button>
-</div>
-
-  <div class="form-card">
-  <h2>4. Quantities & Documents</h2>
-
-  <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: var(--text-main);">📊 Quantities Reported</h3>
-  
-  <div class="equipment-header" style="display: flex; gap: 10px; margin-bottom: 5px; font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">
-    <div style="flex: 2;">Bid Item</div>
-    <div style="flex: 1;">Location / Station</div>
-    <div style="flex: 1;">Quantity</div>
-    <div style="width: 40px;"></div>
-  </div>
-
-  <div id="quantity-fields-container">
-    <%= form.fields_for :inspection_entries do |entry_form| %>
-      <div class="quantity-row">
-        <div style="flex: 2;">
-          <%= entry_form.collection_select :bid_item_id, BidItem.all, :id, :code, {include_blank: "Select Item..."}, {} %>
-        </div>
-        <div style="flex: 1;">
-          <%= entry_form.text_field :location, placeholder: "Station" %>
-        </div>
-        <div style="flex: 1;">
-          <%= entry_form.number_field :quantity, step: 0.01, placeholder: "0.00" %>
-        </div>
-        
-        <% if entry_form.object.persisted? %>
-          <div style="width: 40px; display: flex; justify-content: center;">
-             <label class="delete-icon" title="Delete Line">
-               <%= entry_form.check_box :_destroy, style: "display: none;" %> ✕
-             </label>
-          </div>
-        <% end %>
-      </div>
-    <% end %>
-  </div>
-
-  <button type="button" id="add-quantity-btn" class="btn-secondary">
-    + Add Bid Item Quantity
-  </button>
-
-  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
-
-  <div class="form-row">
-    <div class="form-group">
-      <label>Plan Sheet Ref</label>
-      <%= form.text_field :plan_sheet, placeholder: "e.g. C-102" %>
-    </div>
-    <div class="form-group">
-      <label>Relevant Docs</label>
-      <%= form.text_field :relevant_docs, placeholder: "e.g. RFI #402" %>
-    </div>
-  </div>
-
-  <div class="form-row">
-    <div class="form-group full-width">
-      <label>General Commentary / Notes</label>
-      <%= form.text_area :commentary, rows: 4, placeholder: "Enter daily summary..." %>
-    </div>
-  </div>
-
-  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
-
-  <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-main);">📷 Photos & Attachments</h3>
-
-  <div class="attachment-gallery">
-    <%= form.fields_for :report_attachments do |attachment_form| %>
-      <% if attachment_form.object.persisted? %>
-        <div class="attachment-card">
-          <div class="img-preview">
-            <% if attachment_form.object.file.representable? %>
-               <%= image_tag attachment_form.object.file.variant(resize_to_limit: [300, 200]) %>
-            <% else %>
-               <div class="file-icon" style="font-size: 2rem;">📄</div>
-            <% end %>
-          </div>
-          
-          <div class="caption-input">
-             <%= attachment_form.text_field :caption, placeholder: "Caption..." %>
-          </div>
-
-          <label class="delete-btn-text">
-            <%= attachment_form.check_box :_destroy %> Delete
-          </label>
+    <h3>Equipment Log</h3>
+    <div id="equipment-fields-container">
+      <%= form.fields_for :equipment_entries do |eq_form| %>
+        <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
+          <%= eq_form.text_field :make_model, placeholder: "Make/Model", style: "flex: 3" %>
+          <%= eq_form.number_field :hours, step: 0.5, placeholder: "Hours", style: "flex: 1" %>
+          <% if eq_form.object.persisted? %>
+            <label>Delete <%= eq_form.check_box :_destroy %></label>
+          <% end %>
         </div>
       <% end %>
-    <% end %>
+    </div>
+    <button type="button" id="add-equipment-btn" class="btn-secondary">+ Add Equipment</button>
   </div>
 
-  <div id="new-attachments-container" style="margin-top: 15px;"></div>
+  <%# --- 5. QUANTITIES (Nested Forms) --- %>
+  <div class="form-card">
+    <h2>4. Quantities</h2>
+    <div id="quantity-fields-container">
+      <%= form.fields_for :inspection_entries do |entry_form| %>
+        <div class="quantity-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
+           <div style="flex: 2">
+             <%= entry_form.collection_select :bid_item_id, BidItem.all, :id, :code, {include_blank: "Select Item"} %>
+           </div>
+           <div style="flex: 1">
+             <%= entry_form.text_field :location, placeholder: "Location" %>
+           </div>
+           <div style="flex: 1">
+             <%= entry_form.number_field :quantity, step: 0.01, placeholder: "Qty" %>
+           </div>
+           <% if entry_form.object.persisted? %>
+             <label>Delete <%= entry_form.check_box :_destroy %></label>
+           <% end %>
+        </div>
+      <% end %>
+    </div>
+    <button type="button" id="add-quantity-btn" class="btn-secondary">+ Add Quantity</button>
+  
+    <hr>
+    
+    <div class="form-row">
+      <div class="form-group full-width">
+        <label>Notes / Commentary</label>
+        <%= form.text_area :commentary, rows: 4 %>
+      </div>
+    </div>
+  </div>
 
-  <button type="button" id="add-attachment-btn" class="btn-secondary" style="background-color: var(--border-focus); color: white; border-color: var(--border-focus);">
-    + Upload New Photo/Document
-  </button>
-</div>
+  <%# --- 6. PHOTOS & ATTACHMENTS (ActiveStorage) --- %>
+  <div class="form-card">
+    <h2>5. Photos</h2>
+    
+    <% if report.attachments.attached? %>
+      <div class="existing-photos" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+        <% report.attachments.each do |file| %>
+          <div style="border: 1px solid #ccc; padding: 5px; text-align: center;">
+            <% if file.representable? %>
+              <%= image_tag file.variant(resize_to_limit: [150, 150]) %>
+            <% else %>
+               <div>📄 <%= file.filename %></div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
 
-<div class="actions" style="margin-top: 2rem; text-align: right;">
-  <%= form.submit "Save & Submit Report", class: "btn-primary-action" %>
-</div> 
+    <div class="form-group">
+      <label>Upload New Files (Select Multiple)</label>
+      <%= form.file_field :attachments, multiple: true, class: "form-control" %>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top: 2rem; text-align: right;">
+    <%= form.submit "Save & Submit Report", class: "btn-primary-action" %>
+  </div>
+
 <% end %>
-    
-    
 
-<template id="attachment-template">
-  <div class="attachment-row" style="border: 1px dashed var(--border-color); padding: 10px; margin-bottom: 10px; background: var(--bg-hover); display: flex; align-items: flex-start; gap: 10px;">
-    <div style="flex: 1;">
-      <label style="color: var(--text-main);">Select File:</label>
-      <input type="file" name="report[report_attachments_attributes][NEW_RECORD][file]" accept="image/*,.pdf,.doc,.docx" required>
-    </div>
-    <div style="flex: 2;">
-      <label style="color: var(--text-main);">Caption:</label>
-      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Describe this photo..." style="width: 100%; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
-    </div>
-    <button type="button" class="remove-row-btn" style="background: none; border: none; color: #dc3545; cursor: pointer; font-weight: bold;">X</button>
+<%# --- TEMPLATES FOR JS ADDERS --- %>
+<template id="equipment-template">
+  <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
+    <input style="flex: 3" placeholder="Make/Model" type="text" name="report[equipment_entries_attributes][NEW_RECORD][make_model]">
+    <input style="flex: 1" placeholder="Hours" step="0.5" type="number" name="report[equipment_entries_attributes][NEW_RECORD][hours]">
+    <button type="button" class="remove-row-btn" style="color: red;">✕</button>
   </div>
 </template>
 
 <template id="quantity-template">
-  <div class="quantity-row">
-    <div style="flex: 2;">
+  <div class="quantity-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
+    <div style="flex: 2">
       <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]">
-         <option value="">Select Item...</option>
+         <option value="">Select Item</option>
          <%= options_from_collection_for_select(BidItem.all, :id, :code) %>
       </select>
     </div>
-    <div style="flex: 1;">
-      <input type="text" name="report[inspection_entries_attributes][NEW_RECORD][location]" placeholder="Station">
-    </div>
-    <div style="flex: 1;">
-      <input type="number" step="0.01" name="report[inspection_entries_attributes][NEW_RECORD][quantity]" placeholder="0.00">
-    </div>
-    <div style="width: 40px; display: flex; justify-content: center;">
-      <button type="button" class="remove-row-btn" style="border:none; background:none; color:red; font-weight:bold; cursor:pointer;">✕</button>
-    </div>
-  </div>
-</template>
-
-<template id="equipment-template">
-  <div class="equipment-row">
-    <input style="flex: 3" placeholder="Make/Model" type="text" 
-           name="report[equipment_entries_attributes][NEW_RECORD][make_model]" 
-           class="form-control">
-           
-    <input style="flex: 1" placeholder="0.0" step="0.5" type="number" 
-           name="report[equipment_entries_attributes][NEW_RECORD][hours]" 
-           class="form-control">
-
-    <div style="width: 40px; display: flex; justify-content: center;">
-      <button type="button" class="remove-row-btn" style="border:none; background:none; color:red; font-weight:bold; cursor:pointer; font-size:1.2rem;">✕</button>
-    </div>
+    <input style="flex: 1" type="text" placeholder="Location" name="report[inspection_entries_attributes][NEW_RECORD][location]">
+    <input style="flex: 1" type="number" step="0.01" placeholder="Qty" name="report[inspection_entries_attributes][NEW_RECORD][quantity]">
+    <button type="button" class="remove-row-btn" style="color: red;">✕</button>
   </div>
 </template>
 
 <script>
-function initializeFormLogic() {
-  console.log("Initializing form logic...");
-
-  // ==========================================
-  // 1. EQUIPMENT SECTION LOGIC
-  // ==========================================
-  const addEqBtn = document.getElementById("add-equipment-btn");
-  const eqContainer = document.getElementById("equipment-fields-container");
-  const eqTemplate = document.getElementById("equipment-template");
-
-  // A. Logic for "Existing" rows (Server rendered)
-  document.querySelectorAll('input[name*="_destroy"]').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-      if (this.checked) {
-        // Find the row and hide it (handles both equipment and attachment rows)
-        const row = this.closest('.equipment-row') || this.closest('.attachment-card') || this.closest('.quantity-row'); 
-        if(row) row.style.display = 'none';
-      }
+document.addEventListener("turbo:load", function() {
+  
+  // 1. Toggles for Deficiency / Safety / QA
+  function toggleSection(triggerSelector, targetId, validValues = []) {
+    document.querySelectorAll(triggerSelector).forEach(input => {
+      input.addEventListener('change', () => checkToggle(triggerSelector, targetId, validValues));
     });
-  });
+    checkToggle(triggerSelector, targetId, validValues);
+  }
 
-  // B. Logic for "New" Equipment rows
-  if(addEqBtn && eqTemplate && eqContainer) {
-    const newBtn = addEqBtn.cloneNode(true);
-    addEqBtn.parentNode.replaceChild(newBtn, addEqBtn);
+  function checkToggle(triggerSelector, targetId, validValues) {
+    const target = document.getElementById(targetId);
+    if(!target) return;
     
-    newBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      const clone = eqTemplate.content.cloneNode(true);
-      const uniqueId = new Date().getTime();
-      
-      clone.querySelectorAll("input").forEach(input => {
-        input.name = input.name.replace("NEW_RECORD", uniqueId);
-      });
-
-      const removeBtn = clone.querySelector(".remove-row-btn");
-      if(removeBtn) {
-        removeBtn.addEventListener("click", function(e) {
-          e.target.closest(".equipment-row").remove();
-        });
-      }
-      eqContainer.appendChild(clone);
-    });
-  }
-
-  // ==========================================
-  // 2. QUANTITY ADDER LOGIC
-  // ==========================================
-  const addQtyBtn = document.getElementById("add-quantity-btn");
-  const qtyContainer = document.getElementById("quantity-fields-container");
-  const qtyTemplate = document.getElementById("quantity-template");
-
-  if(addQtyBtn && qtyTemplate && qtyContainer) {
-    const newQtyBtn = addQtyBtn.cloneNode(true);
-    addQtyBtn.parentNode.replaceChild(newQtyBtn, addQtyBtn);
-
-    newQtyBtn.addEventListener("click", function(e) {
-      e.preventDefault();
-      const clone = qtyTemplate.content.cloneNode(true);
-      const uniqueId = new Date().getTime();
-
-      clone.querySelectorAll("select, input").forEach(input => {
-        input.name = input.name.replace("NEW_RECORD", uniqueId);
-      });
-
-      const removeBtn = clone.querySelector(".remove-row-btn");
-      if(removeBtn) {
-        removeBtn.addEventListener("click", function(e) {
-          e.target.closest(".quantity-row").remove();
-        });
-      }
-      qtyContainer.appendChild(clone);
-    });
-  }
-
-  // ==========================================
-  // 3. CHECKLIST TOGGLES (Deficiency & Safety)
-  // ==========================================
-  function updateToggles() {
-    // Deficiency Logic
-    const defStatus = document.querySelector('.deficiency-trigger:checked')?.value;
-    const defDiv = document.getElementById('deficiency-note');
-    if (defDiv) {
-      if(["yes_deficiency", "cdr", "ncr"].includes(defStatus)) {
-        defDiv.style.display = 'block';
-      } else {
-        defDiv.style.display = 'none';
-      }
+    // For Checkbox
+    const checkbox = document.querySelector(triggerSelector + '[type="checkbox"]');
+    if(checkbox) {
+      target.style.display = checkbox.checked ? 'block' : 'none';
+      return;
     }
 
-    // Safety Logic
-    const safetyStatus = document.querySelector('.safety-trigger:checked')?.value;
-    const safetyDiv = document.getElementById('safety-note');
-    if (safetyDiv) {
-      if(safetyStatus === 'safety_yes') {
-        safetyDiv.style.display = 'block';
-      } else {
-        safetyDiv.style.display = 'none';
-      }
+    // For Radio
+    const checked = document.querySelector(triggerSelector + ':checked');
+    if (checked && validValues.includes(checked.value)) {
+      target.style.display = 'block';
+    } else {
+      target.style.display = 'none';
     }
   }
 
-  document.querySelectorAll('.deficiency-trigger, .safety-trigger').forEach(input => {
-    input.addEventListener('change', updateToggles);
-  });
-  updateToggles(); // Run on load
+  toggleSection('.deficiency-trigger', 'deficiency-note', ['yes_deficiency', 'cdr', 'ncr']);
+  toggleSection('.safety-trigger', 'safety-note', ['safety_yes']);
+  toggleSection('#qa_check', 'qa-section');
 
-  // ==========================================
-  // 4. QA CHECKBOX LOGIC
-  // ==========================================
-  const qaCheck = document.getElementById('qa_check');
-  const qaSection = document.getElementById('qa-section');
-  if(qaCheck && qaSection) {
-    qaCheck.addEventListener('change', function() {
-      qaSection.style.display = this.checked ? 'block' : 'none';
-    });
-    qaSection.style.display = qaCheck.checked ? 'block' : 'none';
-  }
 
-  // ==========================================
-  // 5. ATTACHMENT ADDER LOGIC
-  // ==========================================
-  const addAttachBtn = document.getElementById("add-attachment-btn");
-  const attachContainer = document.getElementById("new-attachments-container");
-  const attachTemplate = document.getElementById("attachment-template");
+  // 2. Dynamic Row Adder (Generic)
+  function setupAdder(btnId, containerId, templateId) {
+    const btn = document.getElementById(btnId);
+    if(!btn) return;
 
-  if(addAttachBtn && attachTemplate && attachContainer) {
-    const newAttachBtn = addAttachBtn.cloneNode(true);
-    addAttachBtn.parentNode.replaceChild(newAttachBtn, addAttachBtn);
+    // Clone button to remove old event listeners
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
 
-    newAttachBtn.addEventListener("click", function(e) {
+    newBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      
-      const clone = attachTemplate.content.cloneNode(true);
+      const template = document.getElementById(templateId);
+      const container = document.getElementById(containerId);
+      const clone = template.content.cloneNode(true);
       const uniqueId = new Date().getTime();
-      
-      clone.querySelectorAll("input").forEach(input => {
-        input.name = input.name.replace("NEW_RECORD", uniqueId);
+
+      clone.querySelectorAll('input, select').forEach(el => {
+        el.name = el.name.replace('NEW_RECORD', uniqueId);
       });
 
-      const removeBtn = clone.querySelector(".remove-row-btn");
-      if(removeBtn) {
-        removeBtn.addEventListener("click", function(e) {
-          e.target.closest(".attachment-row").remove(); 
-        });
-      }
-      
-      attachContainer.appendChild(clone);
+      clone.querySelector('.remove-row-btn')?.addEventListener('click', (e) => {
+        e.target.closest('div').remove();
+      });
+
+      container.appendChild(clone);
     });
   }
-}
 
-// LISTEN FOR BOTH STANDARD LOAD AND TURBO LOAD
-document.addEventListener("turbo:load", initializeFormLogic);
-document.addEventListener("DOMContentLoaded", initializeFormLogic);
+  setupAdder('add-equipment-btn', 'equipment-fields-container', 'equipment-template');
+  setupAdder('add-quantity-btn', 'quantity-fields-container', 'quantity-template');
+});
 </script>

@@ -1,39 +1,4 @@
-<button id="detective-toggle-btn" title="Toggle Debugger" 
-        style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; border: none; background: none; font-size: 2rem; cursor: pointer; opacity: 0.7;"
-        onclick="toggleDetective()"> 
-  🐞
-</button>
 
-<div id="detective-window" style="display: none; background-color: #222; color: #0f0; padding: 20px; margin-bottom: 20px; border: 2px solid #0f0; font-family: monospace;">
-  <h3 style="margin-top: 0; color: #0f0;">🕵️ Detective Report</h3>
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-    <div>
-      <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
-      <p><strong>2. Reports in this List:</strong> <%= @reports.count %></p>
-      <p><strong>3. Current Status Filter:</strong> "<%= params[:status] %>"</p>
-    </div>
-    <div>
-      <p><strong>4. Current Params:</strong></p>
-      <code style="color: #ccc; word-break: break-all;"><%= params.to_json %></code>
-    </div>
-  </div>
-  
-  <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
-    <p><strong>5. Who am I?</strong> 
-      <% if user_signed_in? %>
-        ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
-      <% else %>
-        ❌ Not Logged In (Guest)
-      <% end %>
-    </p>
-    
-    <% if user_signed_in? %>
-        <div style="margin-top: 5px;">
-          <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
-        </div>
-    <% end %>
-  </div>
-</div>
 
 <div class="dashboard-container">
 
@@ -71,8 +36,8 @@
         </div>
 
         <div class="filter-group">
-          <label>Inspector</label>
-          <%= form.text_field :inspector, value: params[:inspector], placeholder: "Name...", class: "form-input" %>
+          <label>Inspector (Email)</label>
+          <%= form.text_field :inspector, value: params[:inspector], placeholder: "Search email...", class: "form-input" %>
         </div>
 
         <div class="filter-group">
@@ -119,7 +84,9 @@
           <% @reports.each do |report| %>
             <tr class="clickable-row">
               <td><%= report.inspection_date %></td>
-              <td class="font-medium"><%= report.inspector %></td>
+              
+              <td class="font-medium"><%= report.user.email %></td>
+              
               <td><%= report.project&.name %></td>
               <td><%= report.phase&.name %></td>
               <td>
@@ -160,13 +127,3 @@
 
 </div>
 
-<script>
-  function toggleDetective() {
-    var x = document.getElementById("detective-window");
-    if (x.style.display === "none") {
-      x.style.display = "block";
-    } else {
-      x.style.display = "none";
-    }
-  }
-</script>

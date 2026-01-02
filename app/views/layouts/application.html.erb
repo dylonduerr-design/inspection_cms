@@ -8,65 +8,103 @@
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <style>
+      /* DETECTIVE WINDOW */
+      #detective-window {
+        position: fixed;
+        bottom: 90px; 
+        left: 20px;
+        width: 600px;
+        max-width: 90vw;
+        background-color: rgba(0, 0, 0, 0.95); 
+        color: #0f0;
+        border: 2px solid #0f0;
+        border-radius: 8px;
+        padding: 20px;
+        z-index: 10000;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        transition: opacity 0.2s, transform 0.2s;
+        /* Default State */
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* HIDDEN STATE */
+      .detective-hidden {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateY(20px) !important;
+      }
+
+      /* FLOATING BUTTONS */
+      .floating-actions {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        z-index: 10001; /* Higher than window so they are always clickable */
+        display: flex;
+        gap: 10px;
+      }
+
+      .float-btn {
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+      }
+      
+      .float-btn:hover { transform: scale(1.1); background: #000; }
+      #theme-toggle-btn { color: #FFD700; border-color: #FFD700; }
+    </style>
   </head>
 
-  <body>
-    <script>
-      (function() {
-        const savedTheme = localStorage.getItem('theme');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        }
-      })();
-    </script>
-
-    <%# --- INTEGRATED DETECTIVE WINDOW --- %>
-    <%# We use the class 'detective-hidden' to handle the toggle via CSS/JS %>
-    <div id="detective-window" class="detective-hidden" style="font-family: monospace;">
-      <h3 style="margin-top: 0; color: #00FF00;">🕵️ Detective Report</h3>
+  <body data-controller="ui">
+    
+    <div id="detective-window" class="detective-hidden" data-ui-target="detective" style="font-family: monospace;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin: 0; color: #00FF00;">🕵️ Detective Report</h3>
+        <button class="detective-close-btn" style="background: none; border: none; color: #00FF00; cursor: pointer; font-weight: bold;" 
+                data-action="click->ui#toggleDetective">✕</button>
+      </div>
       
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <div>
-          <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
-          <%# SAFETY CHECK: Only show count if @reports exists to prevent crashes on other pages %>
-          <p><strong>2. Reports in this List:</strong> <%= @reports ? @reports.count : "N/A (Not on Dashboard)" %></p>
-          <p><strong>3. Current Status Filter:</strong> "<%= params[:status] || "All" %>"</p>
+          <p><strong>Reports Total:</strong> <%= Report.count %></p>
+          <p><strong>View Status:</strong> <%= params[:status] || "All" %></p>
+          <p><strong>Controller:</strong> <%= controller_name %>#<%= action_name %></p>
         </div>
         <div>
-          <p><strong>4. Current Params:</strong></p>
-          <code style="color: #ccc; word-break: break-all; display:block; max-width: 100%;"><%= params.to_json %></code>
+           <p><strong>User:</strong> <%= user_signed_in? ? current_user.email : "Guest" %></p>
+           <code style="display:block; background:#333; padding:5px; font-size:0.8rem; color:#ccc;"><%= params.to_json %></code>
         </div>
       </div>
       
-      <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
-        <p><strong>5. Who am I?</strong> 
-          <% if user_signed_in? %>
-            ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
-          <% else %>
-            ❌ Not Logged In (Guest)
-          <% end %>
-        </p>
-        
-        <% if user_signed_in? %>
-            <div style="margin-top: 5px;">
-              <%# This logic requires Devise or similar auth setup %>
-              <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
-            </div>
-        <% end %>
-      </div>
+      <% if user_signed_in? %>
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #444;">
+           <%= button_to "Log Out", destroy_user_session_path, method: :delete, style: "background: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;" %>
+        </div>
+      <% end %>
     </div>
-    <%# --- END DETECTIVE WINDOW --- %>
 
     <%= yield %>
 
-    <button id="theme-toggle-btn" aria-label="Toggle Dark Mode">
-      🌓
-    </button>
-
-    <button id="detective-toggle-btn" title="Toggle Debugger"> 
-      🐞
-    </button>
+    <div class="floating-actions">
+      <button class="float-btn" style="color: #00FF00; border-color: #00FF00;" title="Debugger" 
+              data-action="click->ui#toggleDetective">🐞</button>
+      
+      <button id="theme-toggle-btn" class="float-btn" title="Dark Mode" 
+              data-action="click->ui#toggleTheme">🌓</button>
+    </div>
 
   </body>
 </html>

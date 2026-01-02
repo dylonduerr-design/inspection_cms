@@ -22,7 +22,7 @@
       </div>
       <div class="meta-item">
         <label>Inspector</label>
-        <div class="value"><%= @report.inspector %></div>
+        <div class="value"><%= @report.user.email %></div>
       </div>
       <div class="meta-item">
         <label>Project</label>
@@ -55,11 +55,11 @@
         <tbody>
           <% @report.inspection_entries.each do |entry| %>
             <tr>
-              <td class="code-font"><%= entry.bid_item.code %></td>
-              <td><%= entry.bid_item.description %></td>
+              <td class="code-font"><%= entry.bid_item&.code %></td>
+              <td><%= entry.bid_item&.description %></td>
               <td><%= entry.location %></td>
               <td class="text-right font-bold"><%= entry.quantity %></td>
-              <td class="text-center text-muted"><%= entry.bid_item.unit %></td>
+              <td class="text-center text-muted"><%= entry.bid_item&.unit %></td>
             </tr>
           <% end %>
         </tbody>
@@ -70,6 +70,7 @@
   </div>
 
   <div class="action-bar-container">
+    
     <% if @report.creating? || @report.revise? %>
       <div class="primary-actions">
         <%= button_to "Submit for QC Review", submit_for_qc_report_path(@report), method: :post, class: "btn btn-primary" %>
@@ -78,24 +79,25 @@
     <% end %>
 
     <% if @report.qc_review? %>
-   <div class="qc-panel">
-  <div class="qc-header-row">
-    <h4>QC Decision</h4>
-    <%= button_to "Approve & Authorize", approve_report_path(@report), method: :post, class: "btn btn-success" %>
-  </div>
-  <% end %>
-  <div class="qc-divider"></div>
-  
-  <div class="qc-revision-row">
-    <%= form_with url: request_revision_report_path(@report), method: :post, local: true, class: "revision-form" do |f| %>
-      <label class="revision-label">Return for Revision:</label>
-      <div class="input-group">
-        <%= text_area_tag 'note', nil, placeholder: "Enter reason for rejection...", rows: 1, class: "form-input revision-input" %>
-        <%= f.submit "Return to Inspector", class: "btn btn-danger" %>
+      <div class="qc-panel">
+        <div class="qc-header-row">
+          <h4>QC Decision</h4>
+          <%= button_to "Approve & Authorize", approve_report_path(@report), method: :post, class: "btn btn-success" %>
+        </div>
+        
+        <div class="qc-divider"></div>
+        
+        <div class="qc-revision-row">
+          <%= form_with url: request_revision_report_path(@report), method: :post, local: true, class: "revision-form" do |f| %>
+            <label class="revision-label">Return for Revision:</label>
+            <div class="input-group">
+              <%= text_area_tag 'note', nil, placeholder: "Enter reason for rejection...", rows: 1, class: "form-input revision-input" %>
+              <%= f.submit "Return to Inspector", class: "btn btn-danger" %>
+            </div>
+          <% end %>
+        </div>
       </div>
     <% end %>
-  </div>
-</div>
 
     <div class="nav-links">
       <%= link_to "Edit Details", edit_report_path(@report) %>
@@ -106,15 +108,18 @@
 
   <div class="report-section">
     <h3>Attached Documents & Photos</h3>
-    <% if @report.report_attachments.any? %>
+    
+    <%# FIX 2: Use native .attached? check %>
+    <% if @report.attachments.attached? %>
       <div class="gallery-grid">
-        <% @report.report_attachments.each do |attachment| %>
+        <%# FIX 3: Iterate over native attachments %>
+        <% @report.attachments.each do |file| %>
           <div class="gallery-card">
             <div class="thumbnail-area">
-              <% if attachment.file.representable? %>
-                <%= link_to rails_blob_path(attachment.file, disposition: "attachment"), target: "_blank" do %>
-                  <% if attachment.file.image? %>
-                    <%= image_tag attachment.file %>
+              <% if file.representable? %>
+                <%= link_to rails_blob_path(file, disposition: "attachment"), target: "_blank" do %>
+                  <% if file.image? %>
+                    <%= image_tag file.variant(resize_to_limit: [300, 300]) %>
                   <% else %>
                     <div class="doc-icon">📄</div>
                   <% end %>
@@ -123,9 +128,12 @@
                 <div class="doc-icon">📂</div>
               <% end %>
             </div>
-            <div class="caption"><%= attachment.caption.presence || "(No Caption)" %></div>
+            
+            <%# FIX 4: Use filename since we don't have captions anymore %>
+            <div class="caption"><%= file.filename %></div>
+            
             <div class="download-link">
-              <%= link_to "Download", rails_blob_path(attachment.file, disposition: "attachment") %>
+              <%= link_to "Download", rails_blob_path(file, disposition: "attachment") %>
             </div>
           </div>
         <% end %>
@@ -141,7 +149,7 @@
       <div class="activity-feed">
         <% @report.activity_logs.order(created_at: :desc).each do |log| %>
           <div class="feed-item">
-            <div class="feed-user"><strong><%= log.user %></strong></div>
+            <div class="feed-user"><strong><%= log.user.email %></strong></div>
             <div class="feed-date"><%= log.created_at.strftime("%b %d, %I:%M %p") %></div>
             <div class="feed-note"><%= log.note %></div>
           </div>
@@ -152,3 +160,4 @@
     <% end %>
   </div>
 
+</div>
