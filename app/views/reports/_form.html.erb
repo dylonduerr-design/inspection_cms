@@ -1,321 +1,77 @@
-<style>
-  /* 1. The Container "Card" */
-  .form-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    padding: 2rem;
-    margin-bottom: 2rem;
-    border: 1px solid #e0e0e0;
-    max-width: 1200px; /* Keeps it from getting too wide on huge screens */
-  }
-
-  .form-card h2 {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.25rem;
-    color: #333;
-    border-bottom: 2px solid #007bff;
-    display: inline-block;
-    padding-bottom: 5px;
-  }
-
-  /* 2. The Grid System */
-  .form-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem; /* This creates the space between columns */
-    margin-bottom: 1.5rem;
-  }
-
-  .form-group {
-    flex: 1; /* Makes columns equal width */
-    display: flex;
-    flex-direction: column;
-    min-width: 200px; /* Prevents them from getting too squished */
-  }
-
-  .full-width {
-    flex-basis: 100%;
-  }
-
-  /* 3. Input Styling */
-  .form-group label {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: #555;
-  }
-
-  .form-group input, 
-  .form-group select {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
-    background-color: #fafafa;
-    width: 100%; /* Ensures they fill their column */
-    box-sizing: border-box; /* Fixes padding issues */
-  }
-
-  .form-group input:focus, 
-  .form-group select:focus {
-    border-color: #007bff;
-    outline: none;
-    background-color: white;
-  }
-
-  /* Radio Button Layouts */
-.radio-group {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  margin-top: 5px;
-}
-
-/* For the 3 columns, stack radios vertically if space is tight */
-.radio-group.vertical {
-  flex-direction: column; 
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-weight: normal; /* Override the bold label default */
-}
-
-.radio-label span {
-  font-size: 0.95rem;
-  color: #444;
-}
-
-/* The Hidden Text Areas (Conditional Fields) */
-.conditional-field {
-  margin-top: 15px;
-  padding: 15px;
-  background-color: #fff4f4; /* Very light red bg for alerts */
-  border-left: 4px solid #dc3545; /* Red accent line */
-  border-radius: 4px;
-  animation: slideDown 0.3s ease-out;
-}
-
-.conditional-field textarea {
-  width: 100%;
-  border: 1px solid #ddd;
-  padding: 10px;
-  border-radius: 4px;
-}
-
-/* The QA Panel */
-.qa-panel {
-  margin-top: 15px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  padding: 20px;
-  animation: slideDown 0.3s ease-out;
-}
-
-/* Simple animation for smoother revealing */
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Equipment Row Styling */
-.equipment-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  align-items: center;
-}
-
-/* Custom Secondary Button (The "Add" button) */
-.btn-secondary {
-  background-color: #f0f2f5;
-  color: #333;
-  border: 1px solid #ccc;
-  padding: 8px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
-  margin-top: 10px;
-}
-
-.btn-secondary:hover {
-  background-color: #e4e6e9;
-  border-color: #bbb;
-}
-
-/* The Red "X" Delete Icon */
-.delete-icon {
-  color: #dc3545;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 1.2rem;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: background 0.2s;
-}
-
-.delete-icon:hover {
-  background-color: #ffeef0;
-}
-
-/* If the checkbox inside is checked (meaning marked for delete), fade the row */
-.delete-icon input:checked + span {
-   /* This handles visual feedback if you wrap the X in a span, 
-      but for now the row usually disappears on save. */
-}
-
-/* Attachment Gallery Grid */
-.attachment-gallery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.attachment-card {
-  width: 180px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 8px;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-}
-
-.img-preview {
-  height: 120px;
-  background: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-  overflow: hidden;
-  border-radius: 4px;
-}
-
-.img-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.caption-input input {
-  width: 100%;
-  border: 1px solid #eee;
-  padding: 4px;
-  font-size: 0.8rem;
-}
-
-.delete-btn-text {
-  color: red;
-  font-size: 0.8rem;
-  margin-top: 5px;
-  text-align: right;
-  cursor: pointer;
-  display: block;
-}
-
-/* Big Save Button */
-.btn-primary-action {
-  background-color: #28a745;
-  color: white;
-  border: none;
-  padding: 12px 30px;
-  font-size: 1.1rem;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: bold;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  transition: transform 0.1s;
-}
-
-.btn-primary-action:hover {
-  transform: translateY(-2px);
-  background-color: #218838;
-}
-</style>
-
 <%= form_with(model: report, id: "report-form", multipart: true) do |form| %>
+  
+  <%# --- 1. ERROR HANDLING BLOCK (Corrected) --- %>
   <% if report.errors.any? %>
-    <div style="background-color: #f8d7da; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
+    <div class="error-explanation">
       <h2><%= pluralize(report.errors.count, "error") %> prohibited this report from being saved:</h2>
-      <ul><% report.errors.each do |error| %><li><%= error.full_message %></li><% end %></ul>
+      <ul>
+        <% report.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
     </div>
   <% end %>
 
+  <%# --- 2. MAIN FORM CONTENT --- %>
   <div class="form-card">
     <h2>1. General Information</h2>
 
     <div class="form-row">
       <div class="form-group">
         <label>Inspection Date</label>
-        <%= form.date_field :inspection_date, style: "width: 100%" %>
+        <%= form.date_field :inspection_date %>
       </div>
       <div class="form-group">
         <label>Inspector</label>
-        <%= form.text_field :inspector, style: "width: 100%" %> 
+        <%= form.text_field :inspector %> 
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group">
         <label>Contractor</label>
-        <%= form.text_field :contractor, style: "width: 100%" %>
+        <%= form.text_field :contractor %>
       </div>
       <div class="form-group">
         <label>Project</label>
-        <%= form.collection_select :project_id, Project.all, :id, :name, {}, {style: "width: 100%"} %>
+        <%= form.collection_select :project_id, Project.all, :id, :name, {}, {} %>
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group full-width">
         <label>Phase</label>
-        <%= form.collection_select :phase_id, Phase.all, :id, :name, {}, {style: "width: 100%"} %>
+        <%= form.collection_select :phase_id, Phase.all, :id, :name, {}, {} %>
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group">
         <label>Shift Start</label>
-        <%= form.select :shift_start, ["06:00 AM", "07:00 AM", "08:00 AM", "06:00 PM", "07:00 PM"], {include_blank: true}, {style: "width: 100%"} %>
+        <%= form.select :shift_start, ["06:00 AM", "07:00 AM", "08:00 AM", "06:00 PM", "07:00 PM"], {include_blank: true}, {} %>
       </div>
       <div class="form-group">
         <label>Shift End</label>
-        <%= form.select :shift_end, ["02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "02:00 AM"], {include_blank: true}, {style: "width: 100%"} %>
+        <%= form.select :shift_end, ["02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM", "02:00 AM"], {include_blank: true}, {} %>
       </div>
       <div class="form-group">
         <label>Temp (°F)</label>
-        <%= form.number_field :temperature, style: "width: 100%" %>
+        <%= form.number_field :temperature %>
       </div>
       <div class="form-group">
         <label>Weather</label>
-        <%= form.text_field :weather, style: "width: 100%" %>
+        <%= form.text_field :weather %>
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group">
         <label>Start Station</label>
-        <%= form.text_field :station_start, placeholder: "e.g. 100+00", style: "width: 100%" %>
+        <%= form.text_field :station_start, placeholder: "e.g. 100+00" %>
       </div>
       <div class="form-group">
         <label>End Station</label>
-        <%= form.text_field :station_end, placeholder: "e.g. 105+50", style: "width: 100%" %>
+        <%= form.text_field :station_end, placeholder: "e.g. 105+50" %>
       </div>
     </div>
   </div>
@@ -325,20 +81,15 @@
 
   <%# --- HELPER: MAP DATABASE KEYS TO CLEAN LABELS --- %>
   <% 
-    # This ensures your buttons read "Yes/No" instead of "safety_yes"
-    # Adjust the keys on the left if your database uses different ones.
     deficiency_labels = { "no_deficiency" => "No", "yes_deficiency" => "Yes", "cdr" => "CDR", "ncr" => "NCR" }
     safety_labels     = { "safety_no" => "No", "safety_yes" => "Yes", "safety_na" => "N/A" }
     
-    # Generic Yes/No/NA mapper for the compliance questions
-    # We assume the keys follow a pattern (like 'tc_no', 'tc_yes') or just use standard keys.
-    # This lambda tries to find "yes", "no", or "na" inside the key name.
     pretty_label = ->(key) {
       k = key.to_s.downcase
       return "N/A" if k.include?("na")
       return "No" if k.include?("no")
       return "Yes" if k.include?("yes")
-      key.humanize # Fallback
+      key.humanize
     }
   %>
 
@@ -380,7 +131,7 @@
     </div>
   </div>
 
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 1.5rem 0;">
+  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
 
   <div class="form-row">
     <div class="form-group">
@@ -420,11 +171,11 @@
     </div>
   </div>
 
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 1.5rem 0;">
+  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
 
   <div class="form-row">
     <div class="form-group full-width">
-      <label style="font-size: 1.1rem; color: #333; cursor: pointer;">
+      <label style="font-size: 1.1rem; color: var(--text-main); cursor: pointer;">
         <%= form.check_box :qa_activity, id: "qa_check", style: "width: auto; margin-right: 10px;" %> 
         QA Testing Performed?
       </label>
@@ -456,32 +207,32 @@
   <div class="form-row">
     <div class="form-group full-width">
       <label>Foreman Name</label>
-      <%= form.text_field :foreman, placeholder: "e.g. John Doe", style: "width: 100%" %>
+      <%= form.text_field :foreman, placeholder: "e.g. John Doe" %>
     </div>
   </div>
 
   <div class="form-row">
     <div class="form-group">
       <label>Laborers</label>
-      <%= form.number_field :laborer_count, min: 0, style: "width: 100%" %>
+      <%= form.number_field :laborer_count, min: 0 %>
     </div>
     <div class="form-group">
       <label>Operators</label>
-      <%= form.number_field :operator_count, min: 0, style: "width: 100%" %>
+      <%= form.number_field :operator_count, min: 0 %>
     </div>
     <div class="form-group">
       <label>Surveyors</label>
-      <%= form.number_field :survey_count, min: 0, style: "width: 100%" %>
+      <%= form.number_field :survey_count, min: 0 %>
     </div>
   </div>
 
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 2rem 0;">
+  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
 
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <h3 style="margin: 0; font-size: 1.1rem; color: #333;">🚜 Equipment Log</h3>
+    <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-main);">🚜 Equipment Log</h3>
   </div>
 
-  <div class="equipment-header" style="display: flex; gap: 10px; margin-bottom: 5px; font-weight: 600; color: #666; font-size: 0.9rem;">
+  <div class="equipment-header" style="display: flex; gap: 10px; margin-bottom: 5px; font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">
     <div style="flex: 3;">Make / Model</div>
     <div style="flex: 1;">Hours</div>
     <div style="width: 40px; text-align: center;"></div> </div>
@@ -512,9 +263,9 @@
   <div class="form-card">
   <h2>4. Quantities & Documents</h2>
 
-  <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: #333;">📊 Quantities Reported</h3>
+  <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: var(--text-main);">📊 Quantities Reported</h3>
   
-  <div class="equipment-header" style="display: flex; gap: 10px; margin-bottom: 5px; font-weight: 600; color: #666; font-size: 0.9rem;">
+  <div class="equipment-header" style="display: flex; gap: 10px; margin-bottom: 5px; font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">
     <div style="flex: 2;">Bid Item</div>
     <div style="flex: 1;">Location / Station</div>
     <div style="flex: 1;">Quantity</div>
@@ -523,15 +274,15 @@
 
   <div id="quantity-fields-container">
     <%= form.fields_for :inspection_entries do |entry_form| %>
-      <div class="quantity-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+      <div class="quantity-row">
         <div style="flex: 2;">
-          <%= entry_form.collection_select :bid_item_id, BidItem.all, :id, :code, {include_blank: "Select Item..."}, {style: "width: 100%"} %>
+          <%= entry_form.collection_select :bid_item_id, BidItem.all, :id, :code, {include_blank: "Select Item..."}, {} %>
         </div>
         <div style="flex: 1;">
-          <%= entry_form.text_field :location, placeholder: "Station", style: "width: 100%" %>
+          <%= entry_form.text_field :location, placeholder: "Station" %>
         </div>
         <div style="flex: 1;">
-          <%= entry_form.number_field :quantity, step: 0.01, placeholder: "0.00", style: "width: 100%" %>
+          <%= entry_form.number_field :quantity, step: 0.01, placeholder: "0.00" %>
         </div>
         
         <% if entry_form.object.persisted? %>
@@ -549,29 +300,29 @@
     + Add Bid Item Quantity
   </button>
 
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 2rem 0;">
+  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
 
   <div class="form-row">
     <div class="form-group">
       <label>Plan Sheet Ref</label>
-      <%= form.text_field :plan_sheet, placeholder: "e.g. C-102", style: "width: 100%" %>
+      <%= form.text_field :plan_sheet, placeholder: "e.g. C-102" %>
     </div>
     <div class="form-group">
       <label>Relevant Docs</label>
-      <%= form.text_field :relevant_docs, placeholder: "e.g. RFI #402", style: "width: 100%" %>
+      <%= form.text_field :relevant_docs, placeholder: "e.g. RFI #402" %>
     </div>
   </div>
 
   <div class="form-row">
     <div class="form-group full-width">
       <label>General Commentary / Notes</label>
-      <%= form.text_area :commentary, rows: 4, placeholder: "Enter daily summary...", style: "width: 100%; padding: 10px;" %>
+      <%= form.text_area :commentary, rows: 4, placeholder: "Enter daily summary..." %>
     </div>
   </div>
 
-  <hr style="border: 0; border-top: 1px solid #eee; margin: 2rem 0;">
+  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
 
-  <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: #333;">📷 Photos & Attachments</h3>
+  <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-main);">📷 Photos & Attachments</h3>
 
   <div class="attachment-gallery">
     <%= form.fields_for :report_attachments do |attachment_form| %>
@@ -581,7 +332,7 @@
             <% if attachment_form.object.file.representable? %>
                <%= image_tag attachment_form.object.file.variant(resize_to_limit: [300, 200]) %>
             <% else %>
-               <div class="file-icon">📄</div>
+               <div class="file-icon" style="font-size: 2rem;">📄</div>
             <% end %>
           </div>
           
@@ -599,7 +350,7 @@
 
   <div id="new-attachments-container" style="margin-top: 15px;"></div>
 
-  <button type="button" id="add-attachment-btn" class="btn-secondary" style="background-color: #007bff; color: white; border-color: #007bff;">
+  <button type="button" id="add-attachment-btn" class="btn-secondary" style="background-color: var(--border-focus); color: white; border-color: var(--border-focus);">
     + Upload New Photo/Document
   </button>
 </div>
@@ -612,32 +363,32 @@
     
 
 <template id="attachment-template">
-  <div class="attachment-row" style="border: 1px dashed #ccc; padding: 10px; margin-bottom: 10px; background: #f9f9f9; display: flex; align-items: flex-start; gap: 10px;">
+  <div class="attachment-row" style="border: 1px dashed var(--border-color); padding: 10px; margin-bottom: 10px; background: var(--bg-hover); display: flex; align-items: flex-start; gap: 10px;">
     <div style="flex: 1;">
-      <label>Select File:</label>
+      <label style="color: var(--text-main);">Select File:</label>
       <input type="file" name="report[report_attachments_attributes][NEW_RECORD][file]" accept="image/*,.pdf,.doc,.docx" required>
     </div>
     <div style="flex: 2;">
-      <label>Caption:</label>
-      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Describe this photo..." style="width: 100%;">
+      <label style="color: var(--text-main);">Caption:</label>
+      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Describe this photo..." style="width: 100%; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
     </div>
-    <button type="button" class="remove-row-btn" style="background: none; border: none; color: red; cursor: pointer; font-weight: bold;">X</button>
+    <button type="button" class="remove-row-btn" style="background: none; border: none; color: #dc3545; cursor: pointer; font-weight: bold;">X</button>
   </div>
 </template>
 
 <template id="quantity-template">
-  <div class="quantity-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+  <div class="quantity-row">
     <div style="flex: 2;">
-      <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]" style="width: 100%; padding: 10px;">
+      <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]">
          <option value="">Select Item...</option>
          <%= options_from_collection_for_select(BidItem.all, :id, :code) %>
       </select>
     </div>
     <div style="flex: 1;">
-      <input type="text" name="report[inspection_entries_attributes][NEW_RECORD][location]" placeholder="Station" style="width: 100%; padding: 10px;">
+      <input type="text" name="report[inspection_entries_attributes][NEW_RECORD][location]" placeholder="Station">
     </div>
     <div style="flex: 1;">
-      <input type="number" step="0.01" name="report[inspection_entries_attributes][NEW_RECORD][quantity]" placeholder="0.00" style="width: 100%; padding: 10px;">
+      <input type="number" step="0.01" name="report[inspection_entries_attributes][NEW_RECORD][quantity]" placeholder="0.00">
     </div>
     <div style="width: 40px; display: flex; justify-content: center;">
       <button type="button" class="remove-row-btn" style="border:none; background:none; color:red; font-weight:bold; cursor:pointer;">✕</button>
@@ -664,22 +415,6 @@
 <script>
 function initializeFormLogic() {
   console.log("Initializing form logic...");
-
-  // ==========================================
-  // 0. DETECTIVE TOGGLE (Restored!)
-  // ==========================================
-  const toggleBtn = document.getElementById("detective-toggle-btn");
-  const detectiveWindow = document.getElementById("detective-window");
-  
-  if (toggleBtn && detectiveWindow) {
-    // We clone the button to remove old listeners and prevent double-clicks
-    const newToggle = toggleBtn.cloneNode(true);
-    toggleBtn.parentNode.replaceChild(newToggle, toggleBtn);
-    
-    newToggle.addEventListener("click", function() {
-      detectiveWindow.classList.toggle("detective-hidden");
-    });
-  }
 
   // ==========================================
   // 1. EQUIPMENT SECTION LOGIC

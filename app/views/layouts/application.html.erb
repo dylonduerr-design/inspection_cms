@@ -11,6 +11,62 @@
   </head>
 
   <body>
+    <script>
+      (function() {
+        const savedTheme = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+
+    <%# --- INTEGRATED DETECTIVE WINDOW --- %>
+    <%# We use the class 'detective-hidden' to handle the toggle via CSS/JS %>
+    <div id="detective-window" class="detective-hidden" style="font-family: monospace;">
+      <h3 style="margin-top: 0; color: #00FF00;">🕵️ Detective Report</h3>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <p><strong>1. Total Reports in DB:</strong> <%= Report.count %></p>
+          <%# SAFETY CHECK: Only show count if @reports exists to prevent crashes on other pages %>
+          <p><strong>2. Reports in this List:</strong> <%= @reports ? @reports.count : "N/A (Not on Dashboard)" %></p>
+          <p><strong>3. Current Status Filter:</strong> "<%= params[:status] || "All" %>"</p>
+        </div>
+        <div>
+          <p><strong>4. Current Params:</strong></p>
+          <code style="color: #ccc; word-break: break-all; display:block; max-width: 100%;"><%= params.to_json %></code>
+        </div>
+      </div>
+      
+      <div style="border-top: 1px solid #444; margin-top: 15px; padding-top: 10px; color: #add8e6;">
+        <p><strong>5. Who am I?</strong> 
+          <% if user_signed_in? %>
+            ✅ Logged in as: <strong><%= current_user.email %></strong> (User ID: <%= current_user.id %>)
+          <% else %>
+            ❌ Not Logged In (Guest)
+          <% end %>
+        </p>
+        
+        <% if user_signed_in? %>
+            <div style="margin-top: 5px;">
+              <%# This logic requires Devise or similar auth setup %>
+              <%= button_to "Log Out (Test Login Flow)", destroy_user_session_path, method: :delete, form: {style: "display:inline-block"}, style: "background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-weight: bold;" %>
+            </div>
+        <% end %>
+      </div>
+    </div>
+    <%# --- END DETECTIVE WINDOW --- %>
+
     <%= yield %>
+
+    <button id="theme-toggle-btn" aria-label="Toggle Dark Mode">
+      🌓
+    </button>
+
+    <button id="detective-toggle-btn" title="Toggle Debugger"> 
+      🐞
+    </button>
+
   </body>
 </html>
