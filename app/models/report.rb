@@ -8,20 +8,15 @@ class Report < ApplicationRecord
   end
 
   # --- 2. VALIDATIONS (The Safety Net) ---
-  # These lines prevent "ghost" reports by blocking saves missing key info
   validates :inspection_date, presence: true
-  validates :inspector, presence: true
+  # REMOVED: validates :inspector, presence: true (This column is gone!)
   validates :project, presence: true
   validates :phase, presence: true
-
-  # Optional: specific format validations if needed
-  # validates :dir_number, uniqueness: true, allow_blank: true
 
   # --- 3. ASSOCIATIONS ---
   belongs_to :project
   belongs_to :phase
   belongs_to :user
-  
   
   # NESTED ENTRIES (Quantities & Equipment)
   has_many :inspection_entries, dependent: :destroy
@@ -52,12 +47,27 @@ class Report < ApplicationRecord
   enum qa_result: { qa_pass: 0, qa_fail: 1, results_pending: 2, info_only: 3 }
 
   # --- 5. SEARCH SCOPES ---
-  scope :filter_by_inspector, ->(name) { where("inspector ILIKE ?", "%#{name}%") if name.present? }
+  
+  # OPTIMIZATION: We now join the 'users' table and search by email
+  scope :filter_by_inspector, ->(query) { 
+    joins(:user).where("users.email ILIKE ?", "%#{query}%") if query.present? 
+  }
+
   scope :filter_by_project, ->(project_id) { where(project_id: project_id) if project_id.present? }
+  
   scope :filter_by_date_range, ->(start_date, end_date) { 
     where(inspection_date: start_date..end_date) if start_date.present? && end_date.present? 
   }
+  
   scope :filter_by_bid_item, ->(bid_item_id) {
     joins(:inspection_entries).where(inspection_entries: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
   }
+
+  # --- 6. HELPER METHODS ---
+  
+  # This acts as a bridge. If a view calls @report.inspector_name, 
+  # it grabs the email from the associated User.
+  def inspector_name
+    user&.email
+  end
 end
