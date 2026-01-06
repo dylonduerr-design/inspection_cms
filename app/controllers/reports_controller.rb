@@ -1,25 +1,21 @@
 require 'csv'
-require 'docx'     # Added
-require 'tempfile' # Added
+require 'docx'
+require 'tempfile'
 
 class ReportsController < ApplicationController
   before_action :authenticate_user!
-  # Added :export_word to the list of actions that need @report set
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision export_word ]
 
   # GET /reports
   def index
-    # 1. Base Scope (Security)
     @reports = if ['creating', 'revise'].include?(params[:status])
                  current_user.reports
                else
                  Report.all
                end
 
-    # 2. Apply Filters
     apply_search_filters
 
-    # 3. Handle Output
     respond_to do |format|
       format.html
       format.csv { send_data generate_csv(@reports), filename: "Project_Master_Log_#{Date.today}.csv" }
@@ -96,26 +92,19 @@ class ReportsController < ApplicationController
 
     # 2. Define the Mapping for Single Fields
     data_mapping = {
-      # Headers
       '{{DIR_NUM}}'   => @report.dir_number,
       '{{DATE}}'      => @report.inspection_date&.strftime("%m/%d/%Y"),
       '{{PROJECT}}'   => @report.project&.name,
       '{{PHASE}}'     => @report.phase&.name,
       '{{INSPECTOR}}' => @report.user&.email,
-      
-      # Shift / Weather
       '{{SHIFT}}'     => "#{@report.shift_start} - #{@report.shift_end}",
       '{{WEATHER}}'   => @report.weather,
       '{{TEMP}}'      => @report.temperature,
       '{{CONTRACTOR}}'=> @report.contractor,
-
-      # Enums (Using helper method below)
       '{{TC_STATUS}}' => humanize_enum(@report.traffic_control),
       '{{ENV_STATUS}}'=> humanize_enum(@report.environmental),
       '{{SEC_STATUS}}'=> humanize_enum(@report.security),
       '{{SAF_STATUS}}'=> humanize_enum(@report.safety_incident),
-
-      # Narratives
       '{{COMMENTARY}}'=> @report.commentary,
       '{{DEFICIENCY}}'=> @report.deficiency_desc
     }
@@ -131,47 +120,71 @@ class ReportsController < ApplicationController
     end
 
     # 4. Handle DYNAMIC TABLE: Bid Items
-    # Find table where header contains "Item Code"
-    bid_table = doc.tables.find { |t| t.rows[0].cells.any? { |c| c.text.include?("Item Code") } }
+    bid_table = nil
+    bid_header_row_index = nil
+
+    # Deep Search for the table
+    doc.tables.each do |t|
+      t.rows.each_with_index do |row, index|
+        if row.cells.any? { |c| c.text.include?("Item Code") }
+          bid_table = t
+          bid_header_row_index = index
+          break
+        end
+      end
+      break if bid_table
+    end
     
-    if bid_table && @report.inspection_entries.any?
-      template_row = bid_table.rows[1] # Assumes row 1 is the template
+    if bid_table && bid_header_row_index && @report.inspection_entries.any?
+      template_row = bid_table.rows[bid_header_row_index + 1]
       
       @report.inspection_entries.each do |entry|
         new_row = template_row.copy
         
-        # Manually target cells (Index 0 = Col 1, Index 1 = Col 2, etc.)
-        # Ensure you handle nil values with &. and to_s
+        # MAPPING (Based on your template columns)
         new_row.cells[0].paragraphs[0].text = entry.bid_item&.code.to_s
         new_row.cells[1].paragraphs[0].text = entry.bid_item&.description.to_s
         new_row.cells[2].paragraphs[0].text = entry.quantity.to_s
-        new_row.cells[3].paragraphs[0].text = entry.bid_item&.unit.to_s
-        new_row.cells[4].paragraphs[0].text = entry.location.to_s
-        new_row.cells[5].paragraphs[0].text = entry.notes.to_s
+        new_row.cells[3].paragraphs[0].text = entry.notes.to_s
         
         new_row.insert_before(template_row)
       end
       
-      template_row.remove # Delete the placeholder row
+      # FIX: Use .node.remove instead of .remove
+      template_row.node.remove
     end
 
     # 5. Handle DYNAMIC TABLE: Equipment
-    # Find table where header contains "Make/Model"
-    equip_table = doc.tables.find { |t| t.rows[0].cells.any? { |c| c.text.include?("Make/Model") } }
+    equip_table = nil
+    equip_header_row_index = nil
+
+    # Deep Search for the table
+    doc.tables.each do |t|
+      t.rows.each_with_index do |row, index|
+        if row.cells.any? { |c| c.text.include?("Make/Model") }
+          equip_table = t
+          equip_header_row_index = index
+          break
+        end
+      end
+      break if equip_table
+    end
     
-    if equip_table && @report.equipment_entries.any?
-      template_row = equip_table.rows[1]
+    if equip_table && equip_header_row_index && @report.equipment_entries.any?
+      template_row = equip_table.rows[equip_header_row_index + 1]
       
       @report.equipment_entries.each do |entry|
         new_row = template_row.copy
         
+        # MAPPING
         new_row.cells[0].paragraphs[0].text = entry.make_model.to_s
-        new_row.cells[1].paragraphs[0].text = entry.hours.to_s
+        new_row.cells[2].paragraphs[0].text = entry.hours.to_s 
         
         new_row.insert_before(template_row)
       end
       
-      template_row.remove
+      # FIX: Use .node.remove instead of .remove
+      template_row.node.remove
     end
 
     # 6. Save and Send
@@ -197,7 +210,6 @@ class ReportsController < ApplicationController
       @report = Report.find(params[:id])
     end
 
-    # Helper to clean up replacement logic
     def replace_tags(paragraph, mapping)
       mapping.each do |key, value|
         if paragraph.text.include?(key)
@@ -206,7 +218,6 @@ class ReportsController < ApplicationController
       end
     end
 
-    # Helper to turn "tc_yes" into "Yes"
     def humanize_enum(val)
       case val
       when 'tc_yes', 'env_yes', 'sec_yes', 'safety_yes' then 'Yes'
