@@ -100,6 +100,8 @@
     <% end %>
 
     <div class="nav-links">
+      <%= link_to "📥 Export to Word", export_word_report_path(@report), class: "btn-link" %>
+      <span class="divider">|</span>
       <%= link_to "Edit Details", edit_report_path(@report) %>
       <span class="divider">|</span>
       <%= link_to "Back to List", reports_path %>
