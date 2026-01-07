@@ -17,6 +17,8 @@ class Report < ApplicationRecord
   belongs_to :project
   belongs_to :phase
   belongs_to :user
+  has_many :qa_entries, dependent: :destroy
+  accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
   
   # NESTED ENTRIES (Quantities & Equipment)
   has_many :inspection_entries, dependent: :destroy
@@ -43,8 +45,7 @@ class Report < ApplicationRecord
   enum security: { sec_na: 0, sec_yes: 1, sec_no: 2 }
   enum safety_incident: { safety_no: 0, safety_yes: 1, safety_na: 2 }
   
-  enum qa_type: { density: 0, gradation: 1, smoothness: 2, final_grade: 3, compaction: 4, surface_prep: 5 }
-  enum qa_result: { qa_pass: 0, qa_fail: 1, results_pending: 2, info_only: 3 }
+  
   enum air_ops_coordination: { air_na: 0, air_yes: 1, air_no: 2 }
   enum swppp_controls: { swppp_na: 0, swppp_yes: 1, swppp_no: 2 }
   

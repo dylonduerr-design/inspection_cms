@@ -296,58 +296,62 @@ class ReportsController < ApplicationController
     end
 
     def report_params
-  params.require(:report).permit(
-    # --- 1. NEW DATE FIELDS ---
-    :start_date, 
-    :end_date,
-    
-    :dir_number, :project_id, :phase_id, 
-    :status, :result,
-    :shift_start, :shift_end,
-    
-    # --- 2. WEATHER TRIO & OLD FIELDS ---
-    :temp_1, :temp_2, :temp_3,
-    :wind_1, :wind_2, :wind_3,
-    :precip_1, :precip_2, :precip_3,
-    :weather_summary_1, 
-    :weather_summary_2, 
-    :weather_summary_3,
-    :weather, :temperature,
-    
-    :station_start, :station_end, :contractor, :plan_sheet, :relevant_docs,
-    :deficiency_status, :deficiency_desc,
-    
-    # --- 3. NEW & OLD ENUMS ---
-    :traffic_control, :environmental, :security, :safety_incident, 
-    :air_ops_coordination, :swppp_controls,
-    
-    :safety_desc, :commentary,
-    
-    # --- 4. NEW TEXT FIELDS ---
-    :additional_activities, :additional_info,
+    params.require(:report).permit(
+      # --- 1. GENERAL INFO ---
+      :start_date, :end_date,
+      :dir_number, :project_id, :phase_id, 
+      :status, :result,
+      :shift_start, :shift_end,
+      :contractor, # Main Prime Contractor
 
-    :qa_activity, :qa_bid_item_id, :qa_type, :qa_result,
-    
-    # --- UPDATED CREW FIELDS ---
-    :superintendent,    # <-- Added
-    :electrician_count, # <-- Added
-    :foreman, :laborer_count, :operator_count, :survey_count,
-    
-    attachments: [], 
-    
-    # --- 5. NESTED ATTRIBUTES w/ JSONB ---
-    # Note: Removed :location from this list
-    inspection_entries_attributes: [
-      :id, :bid_item_id, :quantity, :notes, :_destroy, 
-      { checklist_answers: {} } 
-    ],
-    
-    # Note: Added :quantity to this list
-    equipment_entries_attributes: [:id, :make_model, :hours, :quantity, :_destroy],
-    
-    report_attachments_attributes: [:id, :caption, :file, :_destroy]
-  )
-end
+      # --- 2. WEATHER & CONDITIONS ---
+      :temp_1, :temp_2, :temp_3,
+      :wind_1, :wind_2, :wind_3,
+      :precip_1, :precip_2, :precip_3,
+      :weather_summary_1, :weather_summary_2, :weather_summary_3,
+      :weather, :temperature,
+      
+      :station_start, :station_end, :plan_sheet, :relevant_docs,
+      
+      # --- 3. COMPLIANCE & SAFETY ---
+      :deficiency_status, :deficiency_desc,
+      :traffic_control, :environmental, :security, :safety_incident, 
+      :air_ops_coordination, :swppp_controls,
+      :safety_desc, :commentary,
+      
+      # --- 4. TEXT AREAS ---
+      :additional_activities, :additional_info,
+      
+      # --- 5. ATTACHMENTS ---
+      attachments: [], 
+      report_attachments_attributes: [:id, :caption, :file, :_destroy],
+
+      # --- 6. NEW NESTED TABLES (The "Big Three") ---
+      
+      # A. CREW (Workforce) - Note: No more flat foreman/superintendent fields!
+      crew_entries_attributes: [
+        :id, :contractor, :superintendent, :foreman, 
+        :survey_count, :operator_count, :laborer_count, :electrician_count, 
+        :notes, :_destroy
+      ],
+
+      # B. EQUIPMENT (Now includes contractor & quantity)
+      equipment_entries_attributes: [
+        :id, :make_model, :hours, :quantity, :contractor, :_destroy
+      ],
+      
+      # C. INSPECTION ENTRIES (Bid Items) - Note: Location removed
+      inspection_entries_attributes: [
+        :id, :bid_item_id, :quantity, :notes, :_destroy, 
+        { checklist_answers: {} } 
+      ],
+      
+      # D. QA ENTRIES (New!)
+      qa_entries_attributes: [
+        :id, :qa_type, :location, :result, :note, :_destroy
+      ]
+    )
+  end
 
     def generate_csv(reports)
       CSV.generate(headers: true) do |csv|

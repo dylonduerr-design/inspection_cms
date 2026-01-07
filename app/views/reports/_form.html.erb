@@ -30,8 +30,9 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label>Contractor</label>
-        <%= form.text_field :contractor %>
+        <label>Contractor (Prime)</label>
+        <%# Added ID 'main-contractor-input' so JS can find it for auto-populating %>
+        <%= form.text_field :contractor, id: "main-contractor-input" %>
       </div>
       <div class="form-group">
         <label>Project</label>
@@ -54,36 +55,30 @@
       </div>
     </div>
 
-    <%# --- WEATHER TRIO SECTION (UPDATED) --- %>
+    <%# --- WEATHER TRIO SECTION --- %>
     <hr style="margin: 20px 0; border-top: 1px solid #e5e7eb;">
     <h3 style="font-size: 1rem; color: #4b5563; margin-bottom: 10px;">Weather Readings</h3>
     
     <div class="weather-grid">
-      <%# --- COLUMN 1: START --- %>
       <div class="weather-col">
         <label>Start of Shift</label>
         <%= form.number_field :temp_1, placeholder: "Temp (°F)", class: "mb-2" %>
-        <%# NEW FIELD %>
         <%= form.text_field :weather_summary_1, placeholder: "Cond. (e.g. Sunny)", class: "mb-2" %>
         <%= form.text_field :wind_1, placeholder: "Wind (e.g. 5mph N)", class: "mb-2" %>
         <%= form.text_field :precip_1, placeholder: "Precipitation" %>
       </div>
 
-      <%# --- COLUMN 2: MIDDLE --- %>
       <div class="weather-col">
         <label>Mid Shift</label>
         <%= form.number_field :temp_2, placeholder: "Temp (°F)", class: "mb-2" %>
-        <%# NEW FIELD %>
         <%= form.text_field :weather_summary_2, placeholder: "Cond. (e.g. Cloudy)", class: "mb-2" %>
         <%= form.text_field :wind_2, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_2, placeholder: "Precipitation" %>
       </div>
 
-      <%# --- COLUMN 3: END --- %>
       <div class="weather-col">
         <label>End of Shift</label>
         <%= form.number_field :temp_3, placeholder: "Temp (°F)", class: "mb-2" %>
-        <%# NEW FIELD %>
         <%= form.text_field :weather_summary_3, placeholder: "Cond. (e.g. Rain)", class: "mb-2" %>
         <%= form.text_field :wind_3, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_3, placeholder: "Precipitation" %>
@@ -96,21 +91,15 @@
     <h2>2. Inspection Checklist</h2>
 
     <% pretty_label = ->(key) { 
-  k = key.to_s
-  # 1. Handle specific Yes/No/NA cases across all categories
-  return "No"  if k.include?("no_deficiency") || k.end_with?("_no") || k == "safety_no"
-  return "Yes" if k.include?("yes_deficiency") || k.end_with?("_yes") || k == "safety_yes"
-  return "N/A" if k.end_with?("_na") || k.end_with?("_na")
-  
-  # 2. Handle specific acronyms
-  return "CDR" if k == "cdr"
-  return "NCR" if k == "ncr"
+      k = key.to_s
+      return "No"  if k.include?("no_deficiency") || k.end_with?("_no") || k == "safety_no"
+      return "Yes" if k.include?("yes_deficiency") || k.end_with?("_yes") || k == "safety_yes"
+      return "N/A" if k.end_with?("_na") || k.end_with?("_na")
+      return "CDR" if k == "cdr"
+      return "NCR" if k == "ncr"
+      k.humanize.gsub(/Tc |Env |Sec |Air |Swppp /, "") 
+    } %>
 
-  # 3. Fallback for anything else (cleans up "Tc", "Env", etc if needed)
-  k.humanize.gsub(/Tc |Env |Sec |Air |Swppp /, "") 
-} %>
-
-    <%# Deficiency Section %>
     <div class="form-row">
       <div class="form-group full-width">
         <label>Deficiencies Identified?</label>
@@ -129,7 +118,6 @@
       </div>
     </div>
 
-    <%# Safety Section %>
     <div class="form-row">
       <div class="form-group full-width">
         <label>Safety Incidents?</label>
@@ -150,7 +138,6 @@
 
     <hr style="margin: 1.5rem 0;">
 
-    <%# Site Conditions %>
     <div class="form-row">
       <div class="form-group">
         <label>Traffic Control</label>
@@ -178,7 +165,6 @@
       </div>
     </div>
     
-    <%# New Checklist Fields %>
     <div class="form-row" style="margin-top: 15px;">
       <div class="form-group">
         <label>Air Ops Coordination</label>
@@ -199,33 +185,141 @@
     </div>
   </div>
 
-  <%# --- 4. CREW & EQUIPMENT --- %>
+  <%# --- 4. QUALITY ASSURANCE --- %>
   <div class="form-card">
-    <h2>3. Crew & Equipment</h2>
-    
-    <div class="form-row">
-       <div class="form-group"><label>Foreman</label><%= form.text_field :foreman %></div>
-       <div class="form-group"><label>Laborers</label><%= form.number_field :laborer_count %></div>
-       <div class="form-group"><label>Operators</label><%= form.number_field :operator_count %></div>
-       <div class="form-group"><label>Surveyors</label><%= form.number_field :survey_count %></div>
-    </div>
+    <h2>Quality Assurance & Control</h2>
+    <table class="modern-table" style="width: 100%; margin-bottom: 15px;">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Test Performed</th>
+          <th style="width: 25%;">Location</th>
+          <th style="width: 20%;">Result</th>
+          <th style="width: 25%;">Remarks</th>
+          <th style="width: 5%;"></th>
+        </tr>
+      </thead>
+      <tbody id="qa-fields-container">
+        <%= form.fields_for :qa_entries do |qa_form| %>
+          <tr class="nested-fields">
+            <td>
+              <%= qa_form.select :qa_type, 
+                  QaEntry.qa_types.keys.map { |k| [k.humanize.titleize, k] }, 
+                  { prompt: "Select Test..." }, 
+                  class: "form-input" %>
+            </td>
+            <td><%= qa_form.text_field :location, placeholder: "Location", class: "form-input" %></td>
+            <td>
+              <%= qa_form.select :result, 
+                  QaEntry.results.keys.map { |k| [k.humanize.gsub("Qa ", "").titleize, k] }, 
+                  { prompt: "Result..." }, 
+                  class: "form-input" %>
+            </td>
+            <td><%= qa_form.text_field :note, placeholder: "Remarks", class: "form-input" %></td>
+            <td style="text-align: center;">
+              <% if qa_form.object&.persisted? %>
+                <label style="color:red; cursor:pointer;">Del <%= qa_form.check_box :_destroy %></label>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <button type="button" id="add-qa-btn" class="btn-secondary">+ Add QA Test</button>
+  </div>
 
-    <h3>Equipment Log</h3>
-    <div id="equipment-fields-container">
-      <%= form.fields_for :equipment_entries do |eq_form| %>
-        <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
-          <%= eq_form.text_field :make_model, placeholder: "Make/Model", style: "flex: 3" %>
-          <%= eq_form.number_field :hours, step: 0.5, placeholder: "Hours", style: "flex: 1" %>
-          <% if eq_form.object.persisted? %>
-            <label>Delete <%= eq_form.check_box :_destroy %></label>
-          <% end %>
+  <%# --- 5. WORKFORCE & EQUIPMENT --- %>
+  <div class="form-card">
+    <h2>3. Workforce & Equipment</h2>
+
+    <%# --- WORKFORCE LOG --- %>
+    <h3>Workforce Log</h3>
+    <div id="crew-fields-container">
+      <%= form.fields_for :crew_entries do |crew_form| %>
+        <div class="nested-entry-card nested-fields" style="margin-bottom: 15px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+          <div class="form-row">
+             <div class="form-group">
+               <label>Contractor</label>
+               <%= crew_form.text_field :contractor, placeholder: "Contractor Name", class: "auto-contractor" %>
+             </div>
+             <div class="form-group">
+               <label>Superintendent</label>
+               <%= crew_form.text_field :superintendent, placeholder: "Name" %>
+             </div>
+             <div class="form-group">
+               <label>Foreman</label>
+               <%= crew_form.text_field :foreman, placeholder: "Name" %>
+             </div>
+             <div class="form-group">
+               <label>Surveyors</label>
+               <%= crew_form.number_field :survey_count, placeholder: "#" %>
+             </div>
+          </div>
+          <div class="form-row">
+             <div class="form-group">
+               <label>Operators</label>
+               <%= crew_form.number_field :operator_count, placeholder: "#" %>
+             </div>
+             <div class="form-group">
+               <label>Laborers</label>
+               <%= crew_form.number_field :laborer_count, placeholder: "#" %>
+             </div>
+             <div class="form-group">
+               <label>Electricians</label>
+               <%= crew_form.number_field :electrician_count, placeholder: "#" %>
+             </div>
+             <div class="form-group" style="display:flex; align-items:flex-end;">
+               <% if crew_form.object&.persisted? %>
+                 <label style="color: red; cursor: pointer;">
+                   Delete <%= crew_form.check_box :_destroy %>
+                 </label>
+               <% end %>
+             </div>
+          </div>
         </div>
       <% end %>
     </div>
-    <button type="button" id="add-equipment-btn" class="btn-secondary">+ Add Equipment</button>
+    <button type="button" id="add-crew-btn" class="btn-secondary" onclick="autoPopulate('crew')">+ Add Workforce Row</button>
+
+    <hr style="margin: 20px 0;">
+
+    <%# --- EQUIPMENT LOG --- %>
+    <h3 style="margin-top: 15px;">Equipment Log</h3>
+    <div id="equipment-fields-container">
+      <%= form.fields_for :equipment_entries do |eq_form| %>
+        <div class="nested-entry-card nested-fields" style="margin-bottom: 10px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <label class="text-muted-sm">Contractor</label>
+              <%= eq_form.text_field :contractor, placeholder: "Contractor", class: "auto-contractor", style: "width: 100%;" %>
+            </div>
+            <div class="form-group" style="flex: 3;">
+              <label class="text-muted-sm">Make/Model</label>
+              <%= eq_form.text_field :make_model, placeholder: "Description", style: "width: 100%;" %>
+            </div>
+            <div class="form-group" style="flex: 0.5;">
+              <label class="text-muted-sm">Qty</label>
+              <%= eq_form.number_field :quantity, placeholder: "1", style: "width: 100%;" %>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="text-muted-sm">Hours</label>
+              <%= eq_form.number_field :hours, step: 0.5, placeholder: "Hrs", style: "width: 100%;" %>
+            </div>
+            
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+              <% if eq_form.object&.persisted? %>
+                <label style="color: red; cursor: pointer; margin-bottom: 10px;">
+                  Del <%= eq_form.check_box :_destroy %>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <button type="button" id="add-equipment-btn" class="btn-secondary" onclick="autoPopulate('equipment')">+ Add Equipment</button>
   </div>
 
-  <%# --- 5. INSPECTION ENTRIES (BID ITEMS) --- %>
+  <%# --- 6. INSPECTION ENTRIES --- %>
   <div class="form-card">
     <h2>4. Inspection Entries (Bid Items)</h2>
     <div id="quantity-fields-container">
@@ -240,12 +334,7 @@
                      { class: "w-full", data: { action: "change->report-form#selectBidItem" } } 
                %>
              </div>
-             
-             <div class="form-group">
-               <label class="text-muted-sm">Location</label>
-               <%= entry_form.text_field :location, placeholder: "Location" %>
-             </div>
-             
+             <%# Note: Location field removed per requirements %>
              <div class="form-group">
                <label class="text-muted-sm">Quantity</label>
                <%= entry_form.number_field :quantity, step: 0.01, placeholder: "Qty" %>
@@ -254,14 +343,13 @@
 
            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
              <%= entry_form.hidden_field :checklist_answers, class: "checklist-answers-field" %>
-             
              <button type="button" 
                      class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" 
                      data-action="click->report-form#openChecklist">
                Open Checklist
              </button>
              
-             <% if entry_form.object.persisted? %>
+             <% if entry_form.object&.persisted? %>
                <label style="margin-left: auto;">Delete <%= entry_form.check_box :_destroy %></label>
              <% end %>
            </div>
@@ -275,7 +363,7 @@
     <button type="button" id="add-quantity-btn" class="btn-secondary">+ Add Quantity</button>
   </div>
 
-  <%# --- 6. ADDITIONAL INFORMATION --- %>
+  <%# --- 7. ADDITIONAL INFORMATION --- %>
   <div class="form-card">
     <h2>5. Additional Information</h2>
 
@@ -311,7 +399,7 @@
     </div>
   </div>
 
- <%# --- 7. PHOTOS & ATTACHMENTS --- %>
+ <%# --- 8. PHOTOS & ATTACHMENTS --- %>
   <div class="form-card">
     <h2>6. Photos & Attachments</h2>
 
@@ -321,7 +409,7 @@
           <div class="thumbnail-area">
             <% if attachment_form.object.file.attached? %>
               <% if attachment_form.object.file.representable? %>
-                <%= image_tag attachment_form.object.file.representation(resize_to_limit: [300, 300]) %>
+                <%= image_tag attachment_form.object.file.representation(resize_to_limit: [400, 400]) %>
               <% else %>
                 <span class="doc-icon">📄</span>
               <% end %>
@@ -348,13 +436,10 @@
     <%= form.submit "Save & Submit Report", class: "btn-primary-action" %>
   </div>
 
-  <%# --- MODAL FOR CHECKLIST (Using New CSS Classes) --- %>
+  <%# --- MODAL FOR CHECKLIST --- %>
   <dialog data-report-form-target="checklistModal">
-    <div class="modal-header">
-      <h3>Inspection Checklist</h3>
-    </div>
-    <div class="modal-body" data-report-form-target="questionsContainer">
-      </div>
+    <div class="modal-header"><h3>Inspection Checklist</h3></div>
+    <div class="modal-body" data-report-form-target="questionsContainer"></div>
     <div class="modal-footer">
       <button type="button" class="btn-secondary" data-action="click->report-form#closeModal">Cancel</button>
       <button type="button" class="btn-primary-action" data-action="click->report-form#saveChecklist">Save Answers</button>
@@ -363,12 +448,76 @@
 
 <% end %>
 
-<%# --- TEMPLATES FOR DYNAMIC ADDERS (Cleaned Up) --- %>
+<%# --- TEMPLATES --- %>
+<template id="qa-template">
+  <tr class="nested-fields">
+    <td>
+      <select class="form-input" name="report[qa_entries_attributes][NEW_RECORD][qa_type]">
+        <option value="">Select Test...</option>
+        <% QaEntry.qa_types.keys.each do |k| %>
+          <option value="<%= k %>"><%= k.humanize.titleize %></option>
+        <% end %>
+      </select>
+    </td>
+    <td><input class="form-input" type="text" placeholder="Location" name="report[qa_entries_attributes][NEW_RECORD][location]"></td>
+    <td>
+      <select class="form-input" name="report[qa_entries_attributes][NEW_RECORD][result]">
+        <option value="">Result...</option>
+        <% QaEntry.results.keys.each do |k| %>
+          <option value="<%= k %>"><%= k.humanize.gsub("Qa ", "").titleize %></option>
+        <% end %>
+      </select>
+    </td>
+    <td><input class="form-input" type="text" placeholder="Remarks" name="report[qa_entries_attributes][NEW_RECORD][note]"></td>
+    <td style="text-align: center;"><button type="button" class="remove-row-btn" style="color: red; border: none; background: none;">✕</button></td>
+  </tr>
+</template>
+
+<template id="crew-template">
+  <div class="nested-entry-card nested-fields" style="margin-bottom: 15px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+    <div class="form-row">
+       <div class="form-group">
+         <label>Contractor</label>
+         <input type="text" placeholder="Contractor Name" class="auto-contractor" name="report[crew_entries_attributes][NEW_RECORD][contractor]">
+       </div>
+       <div class="form-group"><label>Superintendent</label><input type="text" name="report[crew_entries_attributes][NEW_RECORD][superintendent]"></div>
+       <div class="form-group"><label>Foreman</label><input type="text" name="report[crew_entries_attributes][NEW_RECORD][foreman]"></div>
+       <div class="form-group"><label>Surveyors</label><input type="number" name="report[crew_entries_attributes][NEW_RECORD][survey_count]"></div>
+    </div>
+    <div class="form-row">
+       <div class="form-group"><label>Operators</label><input type="number" name="report[crew_entries_attributes][NEW_RECORD][operator_count]"></div>
+       <div class="form-group"><label>Laborers</label><input type="number" name="report[crew_entries_attributes][NEW_RECORD][laborer_count]"></div>
+       <div class="form-group"><label>Electricians</label><input type="number" name="report[crew_entries_attributes][NEW_RECORD][electrician_count]"></div>
+       <div class="form-group" style="display:flex; align-items:flex-end;">
+         <button type="button" class="remove-row-btn" style="color: red;">Delete</button>
+       </div>
+    </div>
+  </div>
+</template>
+
 <template id="equipment-template">
-  <div class="equipment-row" style="display: flex; gap: 10px; margin-bottom: 5px;">
-    <input style="flex: 3" placeholder="Make/Model" type="text" name="report[equipment_entries_attributes][NEW_RECORD][make_model]">
-    <input style="flex: 1" placeholder="Hours" step="0.5" type="number" name="report[equipment_entries_attributes][NEW_RECORD][hours]">
-    <button type="button" class="remove-row-btn" style="color: red;">✕</button>
+  <div class="nested-entry-card nested-fields" style="margin-bottom: 10px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+    <div class="form-row">
+      <div class="form-group" style="flex: 2;">
+        <label class="text-muted-sm">Contractor</label>
+        <input style="width: 100%;" placeholder="Contractor" class="auto-contractor" type="text" name="report[equipment_entries_attributes][NEW_RECORD][contractor]">
+      </div>
+      <div class="form-group" style="flex: 3;">
+        <label class="text-muted-sm">Make/Model</label>
+        <input style="width: 100%;" placeholder="Description" type="text" name="report[equipment_entries_attributes][NEW_RECORD][make_model]">
+      </div>
+      <div class="form-group" style="flex: 0.5;">
+        <label class="text-muted-sm">Qty</label>
+        <input style="width: 100%;" placeholder="1" type="number" name="report[equipment_entries_attributes][NEW_RECORD][quantity]">
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label class="text-muted-sm">Hours</label>
+        <input style="width: 100%;" placeholder="Hrs" step="0.5" type="number" name="report[equipment_entries_attributes][NEW_RECORD][hours]">
+      </div>
+      <div class="form-group" style="display: flex; align-items: flex-end;">
+        <button type="button" class="remove-row-btn" style="color: red; margin-bottom: 5px;">Delete</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -377,9 +526,7 @@
     <div class="form-row" style="margin-bottom: 10px;">
       <div class="form-group" style="flex: 2;">
         <label class="text-muted-sm">Bid Item</label>
-        <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]" 
-                class="w-full"
-                data-action="change->report-form#selectBidItem">
+        <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]" class="w-full" data-action="change->report-form#selectBidItem">
             <option value="">Select Item</option>
             <% BidItem.all.each do |bi| %>
               <option value="<%= bi.id %>" data-questions="<%= bi.checklist_questions.to_json %>">
@@ -389,27 +536,15 @@
         </select>
       </div>
       <div class="form-group">
-        <label class="text-muted-sm">Location</label>
-        <input class="w-full" type="text" placeholder="Location" name="report[inspection_entries_attributes][NEW_RECORD][location]">
-      </div>
-      <div class="form-group">
         <label class="text-muted-sm">Quantity</label>
         <input class="w-full" type="number" step="0.01" placeholder="Qty" name="report[inspection_entries_attributes][NEW_RECORD][quantity]">
       </div>
     </div>
-
     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
       <input type="hidden" name="report[inspection_entries_attributes][NEW_RECORD][checklist_answers]" class="checklist-answers-field" value="{}">
-      
-      <button type="button" 
-              class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" 
-              data-action="click->report-form#openChecklist">
-        Open Checklist
-      </button>
-
+      <button type="button" class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" data-action="click->report-form#openChecklist">Open Checklist</button>
       <button type="button" class="remove-row-btn" style="color: red; margin-left: auto;">Delete</button>
     </div>
-    
     <div class="form-group">
       <input type="text" placeholder="Daily notes..." name="report[inspection_entries_attributes][NEW_RECORD][notes]" class="w-full">
     </div>
@@ -419,7 +554,7 @@
 <script>
 document.addEventListener("turbo:load", function() {
   
-  // 1. Legacy Toggles (Preserved)
+  // 1. Toggles for Deficiency & Safety
   function toggleSection(triggerSelector, targetId, validValues = []) {
     document.querySelectorAll(triggerSelector).forEach(input => {
       input.addEventListener('change', () => checkToggle(triggerSelector, targetId, validValues));
@@ -446,7 +581,7 @@ document.addEventListener("turbo:load", function() {
   toggleSection('.deficiency-trigger', 'deficiency-note', ['yes_deficiency', 'cdr', 'ncr']);
   toggleSection('.safety-trigger', 'safety-note', ['safety_yes']);
 
-  // 2. Dynamic Row Adder (Preserved)
+  // 2. Dynamic Row Adder
   function setupAdder(btnId, containerId, templateId) {
     const btn = document.getElementById(btnId);
     if(!btn) return;
@@ -475,5 +610,23 @@ document.addEventListener("turbo:load", function() {
 
   setupAdder('add-equipment-btn', 'equipment-fields-container', 'equipment-template');
   setupAdder('add-quantity-btn', 'quantity-fields-container', 'quantity-template');
+  setupAdder('add-qa-btn', 'qa-fields-container', 'qa-template');
+  setupAdder('add-crew-btn', 'crew-fields-container', 'crew-template');
+
+  // 3. Auto-Populate Logic
+  // Looks for ID "main-contractor-input" and copies it to any new field with class "auto-contractor"
+  window.autoPopulate = function(type) {
+    setTimeout(() => {
+      const mainContractor = document.getElementById("main-contractor-input")?.value || "";
+      const container = document.getElementById(type + "-fields-container");
+      
+      const allInputs = container.querySelectorAll(".auto-contractor");
+      const lastInput = allInputs[allInputs.length - 1];
+
+      if(lastInput && mainContractor) {
+        lastInput.value = mainContractor;
+      }
+    }, 50);
+  };
 });
 </script>

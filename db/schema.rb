@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_07_071635) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_07_185111) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -58,7 +58,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_071635) do
     t.string "unit"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.jsonb "checklist_questions", default: []
+    t.jsonb "checklist_questions"
   end
 
   create_table "equipment_entries", force: :cascade do |t|
@@ -68,6 +68,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_071635) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "quantity", default: 1
+    t.string "contractor"
     t.index ["report_id"], name: "index_equipment_entries_on_report_id"
   end
 
@@ -93,6 +94,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_071635) do
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "qa_entries", force: :cascade do |t|
+    t.bigint "report_id", null: false
+    t.integer "qa_type"
+    t.string "location"
+    t.integer "result"
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_id"], name: "index_qa_entries_on_report_id"
   end
 
   create_table "report_attachments", force: :cascade do |t|
@@ -129,10 +141,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_071635) do
     t.integer "safety_incident"
     t.text "safety_desc"
     t.text "commentary"
-    t.boolean "qa_activity"
-    t.integer "qa_bid_item_id"
-    t.integer "qa_type"
-    t.integer "qa_result"
     t.string "foreman"
     t.integer "laborer_count"
     t.integer "operator_count"
@@ -181,6 +189,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_071635) do
   add_foreign_key "equipment_entries", "reports"
   add_foreign_key "inspection_entries", "bid_items"
   add_foreign_key "inspection_entries", "reports"
+  add_foreign_key "qa_entries", "reports"
   add_foreign_key "report_attachments", "reports"
   add_foreign_key "reports", "phases"
   add_foreign_key "reports", "projects"
