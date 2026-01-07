@@ -60,31 +60,45 @@
     <h3 style="font-size: 1rem; color: #4b5563; margin-bottom: 10px;">Weather Readings</h3>
     
     <div class="weather-grid">
-      <div class="weather-col">
+      <%# --- COLUMN 1: START --- %>
+      <div class="weather-col" style="position: relative;">
         <label>Start of Shift</label>
         <%= form.number_field :temp_1, placeholder: "Temp (°F)", class: "mb-2" %>
         <%= form.text_field :weather_summary_1, placeholder: "Cond. (e.g. Sunny)", class: "mb-2" %>
         <%= form.text_field :wind_1, placeholder: "Wind (e.g. 5mph N)", class: "mb-2" %>
         <%= form.text_field :precip_1, placeholder: "Precipitation" %>
+        
+        <button type="button" class="btn-secondary weather-fetch-btn" data-suffix="1" style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
+          📍 Get Current Weather
+        </button>
       </div>
 
-      <div class="weather-col">
+      <%# --- COLUMN 2: MIDDLE --- %>
+      <div class="weather-col" style="position: relative;">
         <label>Mid Shift</label>
         <%= form.number_field :temp_2, placeholder: "Temp (°F)", class: "mb-2" %>
         <%= form.text_field :weather_summary_2, placeholder: "Cond. (e.g. Cloudy)", class: "mb-2" %>
         <%= form.text_field :wind_2, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_2, placeholder: "Precipitation" %>
+
+        <button type="button" class="btn-secondary weather-fetch-btn" data-suffix="2" style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
+          📍 Get Current Weather
+        </button>
       </div>
 
-      <div class="weather-col">
+      <%# --- COLUMN 3: END --- %>
+      <div class="weather-col" style="position: relative;">
         <label>End of Shift</label>
         <%= form.number_field :temp_3, placeholder: "Temp (°F)", class: "mb-2" %>
         <%= form.text_field :weather_summary_3, placeholder: "Cond. (e.g. Rain)", class: "mb-2" %>
         <%= form.text_field :wind_3, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_3, placeholder: "Precipitation" %>
+
+        <button type="button" class="btn-secondary weather-fetch-btn" data-suffix="3" style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
+          📍 Get Current Weather
+        </button>
       </div>
     </div>
-  </div>
 
   <%# --- 3. CHECKLIST --- %>
   <div class="form-card">
@@ -553,8 +567,10 @@
 
 <script>
 document.addEventListener("turbo:load", function() {
-  
-  // 1. Toggles for Deficiency & Safety
+
+  // =========================================================
+  // 1. TOGGLE LOGIC (Checkbox/Radio visibility)
+  // =========================================================
   function toggleSection(triggerSelector, targetId, validValues = []) {
     document.querySelectorAll(triggerSelector).forEach(input => {
       input.addEventListener('change', () => checkToggle(triggerSelector, targetId, validValues));
@@ -565,11 +581,13 @@ document.addEventListener("turbo:load", function() {
   function checkToggle(triggerSelector, targetId, validValues) {
     const target = document.getElementById(targetId);
     if(!target) return;
+
     const checkbox = document.querySelector(triggerSelector + '[type="checkbox"]');
     if(checkbox) {
       target.style.display = checkbox.checked ? 'block' : 'none';
       return;
     }
+
     const checked = document.querySelector(triggerSelector + ':checked');
     if (checked && validValues.includes(checked.value)) {
       target.style.display = 'block';
@@ -578,14 +596,21 @@ document.addEventListener("turbo:load", function() {
     }
   }
 
+  // --- ACTIVATE TOGGLES ---
   toggleSection('.deficiency-trigger', 'deficiency-note', ['yes_deficiency', 'cdr', 'ncr']);
   toggleSection('.safety-trigger', 'safety-note', ['safety_yes']);
+  toggleSection('#toggle_activities', 'box-activities');
+  toggleSection('#toggle_info', 'box-info');
 
-  // 2. Dynamic Row Adder
+
+  // =========================================================
+  // 2. DYNAMIC ROW ADDER (Crew, Equipment, etc)
+  // =========================================================
   function setupAdder(btnId, containerId, templateId) {
     const btn = document.getElementById(btnId);
     if(!btn) return;
 
+    // Clone button to remove old listeners (prevents duplicates)
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
 
@@ -601,10 +626,14 @@ document.addEventListener("turbo:load", function() {
       });
 
       clone.querySelector('.remove-row-btn')?.addEventListener('click', (e) => {
-        e.target.closest('.nested-fields, .equipment-row').remove();
+        e.target.closest('.nested-fields, .equipment-row, tr').remove();
       });
 
       container.appendChild(clone);
+      
+      // Auto-populate trigger
+      if(btnId === 'add-crew-btn') autoPopulate('crew');
+      if(btnId === 'add-equipment-btn') autoPopulate('equipment');
     });
   }
 
@@ -613,8 +642,10 @@ document.addEventListener("turbo:load", function() {
   setupAdder('add-qa-btn', 'qa-fields-container', 'qa-template');
   setupAdder('add-crew-btn', 'crew-fields-container', 'crew-template');
 
-  // 3. Auto-Populate Logic
-  // Looks for ID "main-contractor-input" and copies it to any new field with class "auto-contractor"
+
+  // =========================================================
+  // 3. AUTO-POPULATE LOGIC (Contractor Name)
+  // =========================================================
   window.autoPopulate = function(type) {
     setTimeout(() => {
       const mainContractor = document.getElementById("main-contractor-input")?.value || "";
@@ -623,10 +654,118 @@ document.addEventListener("turbo:load", function() {
       const allInputs = container.querySelectorAll(".auto-contractor");
       const lastInput = allInputs[allInputs.length - 1];
 
-      if(lastInput && mainContractor) {
+      if(lastInput && mainContractor && lastInput.value === "") {
         lastInput.value = mainContractor;
       }
     }, 50);
   };
-});
+
+
+  // =========================================================
+  // 4. WEATHER AUTOMATION (Open-Meteo)
+  // =========================================================
+  let activeWeatherSuffix = null;
+
+  // Debugging check:
+  const weatherBtns = document.querySelectorAll('.weather-fetch-btn');
+  if(weatherBtns.length === 0) console.warn("Maestro Warning: No weather buttons found. Check HTML.");
+
+  weatherBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      // 1. Identify Column
+      activeWeatherSuffix = btn.dataset.suffix;
+      const originalText = btn.innerText;
+
+      if (!navigator.geolocation) {
+        alert("Geolocation not supported by this browser.");
+        return;
+      }
+
+      // 2. Loading State
+      btn.innerText = "Locating...";
+      btn.disabled = true;
+
+      // 3. Fetch Location
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetchWeatherData(position, btn, originalText);
+        }, 
+        (error) => {
+          console.error(error);
+          alert("Unable to retrieve location. Ensure you are on localhost or HTTPS.");
+          btn.innerText = originalText;
+          btn.disabled = false;
+        }
+      );
+    });
+  });
+
+  function fetchWeatherData(position, btn, originalText) {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    btn.innerText = "Fetching...";
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch`;
+
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        const current = data.current;
+        const s = activeWeatherSuffix; 
+
+        // 1. Target Fields
+        const tempField = document.querySelector(`[name="report[temp_${s}]"]`);
+        const windField = document.querySelector(`[name="report[wind_${s}]"]`);
+        const precipField = document.querySelector(`[name="report[precip_${s}]"]`);
+        const condField = document.querySelector(`[name="report[weather_summary_${s}]"]`);
+
+        // 2. Populate
+        if(tempField) tempField.value = Math.round(current.temperature_2m);
+        
+        if(windField) {
+          const windDir = getCardinalDirection(current.wind_direction_10m);
+          windField.value = `${Math.round(current.wind_speed_10m)} mph ${windDir}`;
+        }
+
+        if(precipField) precipField.value = current.precipitation;
+        
+        if(condField) condField.value = decodeWeatherCode(current.weather_code);
+
+        // 3. Reset
+        btn.innerText = "✓ Updated";
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.disabled = false;
+        }, 2000);
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Error connecting to Weather API.");
+        btn.innerText = originalText;
+        btn.disabled = false;
+      });
+  }
+
+  // --- Weather Helpers ---
+  function getCardinalDirection(angle) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return directions[Math.round(angle / 45) % 8];
+  }
+
+  function decodeWeatherCode(code) {
+    const codes = {
+      0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+      45: "Fog", 48: "Depositing rime fog",
+      51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+      61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+      71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
+      80: "Slight showers", 81: "Moderate showers", 82: "Violent showers",
+      95: "Thunderstorm", 96: "Thunderstorm + hail"
+    };
+    return codes[code] || "Unknown";
+  }
+
+}); // <--- END OF TURBO LOAD
 </script>
