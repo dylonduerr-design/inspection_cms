@@ -1,6 +1,9 @@
 class Report < ApplicationRecord
-  # --- 1. AUTO-SET DEFAULT VALUES ---
+  # --- 1. AUTO-SET DEFAULT VALUES & CALLBACKS ---
   after_initialize :set_defaults, if: :new_record?
+  
+  # TRIGGER: Run the logic engine before every save
+  before_save :calculate_automatic_result
 
   def set_defaults
     self.status ||= :creating
@@ -31,19 +34,19 @@ class Report < ApplicationRecord
 
   # B. EQUIPMENT ENTRIES
   has_many :equipment_entries, dependent: :destroy
-  # REJECT IF: Make/Model is blank (ignores rows where only Contractor is auto-filled)
+  # REJECT IF: Make/Model is blank
   accepts_nested_attributes_for :equipment_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['make_model'].blank? }
 
-  # C. CREW ENTRIES (This was missing!)
+  # C. CREW ENTRIES
   has_many :crew_entries, dependent: :destroy
   # REJECT IF: No key crew fields are entered
   accepts_nested_attributes_for :crew_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['foreman'].blank? && att['superintendent'].blank? && att['laborer_count'].blank? }
 
-  # D. QA ENTRIES
+  # D. QA ENTRIES (Now connected to your new table)
   has_many :qa_entries, dependent: :destroy
   accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
 
@@ -75,13 +78,35 @@ class Report < ApplicationRecord
     joins(:inspection_entries).where(inspection_entries: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
   }
   
-  # FIXED: Removed the duplicate/broken scope that used 'inspection_date'
   scope :filter_by_date_range, ->(start_date, end_date) { 
     where(start_date: start_date..end_date) if start_date.present? && end_date.present?
   }
 
   # --- 6. HELPER METHODS ---
+  
+  # LOGIC ENGINE: "Worst-to-Best" Result Calculation
+  def calculate_automatic_result
+    # TIER 1: AUTOMATIC FAIL (The "Worst" Case)
+    # Fails if NCR/CDR exists OR if any attached QA entry is 'qa_fail'
+    if cdr? || ncr? || qa_entries.any? { |test| test.qa_fail? }
+      self.result = :fail
+      return
+    end
+
+    # TIER 2: PENDING (The "Middle" Case)
+    # Pending if minor deficiency exists OR if any QA entry is 'qa_pending'
+    if yes_deficiency? || qa_entries.any? { |test| test.qa_pending? }
+      self.result = :pending
+      return
+    end
+
+    # TIER 3: PASS (The "Best" Case)
+    # If we survive the checks above, the report passes.
+    self.result = :pass
+  end
+
   def inspector_name
-    user&.email
+    # Update this to user&.full_name if you implemented the Name migration!
+    user&.email 
   end
 end

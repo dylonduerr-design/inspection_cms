@@ -464,27 +464,35 @@
 
 <%# --- TEMPLATES --- %>
 <template id="qa-template">
-  <tr class="nested-fields">
-    <td>
-      <select class="form-input" name="report[qa_entries_attributes][NEW_RECORD][qa_type]">
+  <div class="qa-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+    
+    <div style="flex: 2;">
+      <select class="form-control" name="report[qa_entries_attributes][NEW_RECORD][qa_type]">
         <option value="">Select Test...</option>
         <% QaEntry.qa_types.keys.each do |k| %>
           <option value="<%= k %>"><%= k.humanize.titleize %></option>
         <% end %>
       </select>
-    </td>
-    <td><input class="form-input" type="text" placeholder="Location" name="report[qa_entries_attributes][NEW_RECORD][location]"></td>
-    <td>
-      <select class="form-input" name="report[qa_entries_attributes][NEW_RECORD][result]">
-        <option value="">Result...</option>
+    </div>
+
+    <div style="flex: 2;">
+      <input class="form-control" placeholder="Location" type="text" name="report[qa_entries_attributes][NEW_RECORD][location]">
+    </div>
+
+    <div style="flex: 1;">
+      <select class="form-control" name="report[qa_entries_attributes][NEW_RECORD][result]">
         <% QaEntry.results.keys.each do |k| %>
-          <option value="<%= k %>"><%= k.humanize.gsub("Qa ", "").titleize %></option>
+          <option value="<%= k %>"><%= k.humanize.gsub('Qa ', '') %></option>
         <% end %>
       </select>
-    </td>
-    <td><input class="form-input" type="text" placeholder="Remarks" name="report[qa_entries_attributes][NEW_RECORD][note]"></td>
-    <td style="text-align: center;"><button type="button" class="remove-row-btn" style="color: red; border: none; background: none;">✕</button></td>
-  </tr>
+    </div>
+
+    <div style="flex: 2;">
+      <input class="form-control" placeholder="Remarks" type="text" name="report[qa_entries_attributes][NEW_RECORD][remarks]">
+    </div>
+
+    <button type="button" class="remove-row-btn" style="color: red; border: none; background: none; cursor: pointer;">✕</button>
+  </div>
 </template>
 
 <template id="crew-template">
@@ -641,6 +649,7 @@ document.addEventListener("turbo:load", function() {
   setupAdder('add-quantity-btn', 'quantity-fields-container', 'quantity-template');
   setupAdder('add-qa-btn', 'qa-fields-container', 'qa-template');
   setupAdder('add-crew-btn', 'crew-fields-container', 'crew-template');
+  setupAdder('add-qa-btn', 'qa-entries-container', 'qa-template');
 
 
   // =========================================================

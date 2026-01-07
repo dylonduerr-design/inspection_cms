@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_07_204014) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_07_222916) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -116,7 +116,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_204014) do
     t.integer "qa_type"
     t.string "location"
     t.integer "result"
-    t.string "note"
+    t.string "remarks"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["report_id"], name: "index_qa_entries_on_report_id"
