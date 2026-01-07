@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_07_004329) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_07_033939) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -58,7 +58,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_004329) do
     t.string "unit"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.jsonb "checklist_questions"
+    t.jsonb "checklist_questions", default: []
   end
 
   create_table "equipment_entries", force: :cascade do |t|
@@ -152,6 +152,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_07_004329) do
     t.integer "swppp_controls", default: 0
     t.text "additional_activities"
     t.text "additional_info"
+    t.string "weather_summary_1"
+    t.string "weather_summary_2"
+    t.string "weather_summary_3"
     t.index ["phase_id"], name: "index_reports_on_phase_id"
     t.index ["project_id"], name: "index_reports_on_project_id"
     t.index ["user_id"], name: "index_reports_on_user_id"

@@ -100,6 +100,7 @@ class ReportsController < ApplicationController
     combined_temp = [@report.temp_1, @report.temp_2, @report.temp_3].compact.join(" / ")
     combined_wind = [@report.wind_1, @report.wind_2, @report.wind_3].compact.join(" / ")
     combined_precip = [@report.precip_1, @report.precip_2, @report.precip_3].compact.join(" / ")
+    combined_weather = [@report.weather_summary_1, @report.weather_summary_2, @report.weather_summary_3].compact.join(" / ")
 
     data_mapping = {
       '{{DIR_NUM}}'    => @report.dir_number,
@@ -111,7 +112,7 @@ class ReportsController < ApplicationController
       '{{SHIFT}}'      => "#{@report.shift_start} - #{@report.shift_end}",
       
       # Weather Trio Mappings
-      '{{TEMP}}'       => combined_temp,      # Combined for backward compatibility
+      '{{TEMP}}'       => combined_temp,      # Combined into X/Y/Z format
       '{{TEMP_1}}'     => @report.temp_1,
       '{{TEMP_2}}'     => @report.temp_2,
       '{{TEMP_3}}'     => @report.temp_3,
@@ -125,6 +126,8 @@ class ReportsController < ApplicationController
       '{{PRECIP_1}}'   => @report.precip_1,
       '{{PRECIP_2}}'   => @report.precip_2,
       '{{PRECIP_3}}'   => @report.precip_3,
+
+      '{{WEATHER}}'    => combined_weather,
       
       '{{CONTRACTOR}}' => @report.contractor,
       
@@ -135,7 +138,7 @@ class ReportsController < ApplicationController
       '{{SAF_STATUS}}' => humanize_enum(@report.safety_incident),
       '{{AIR_OPS}}'    => humanize_enum(@report.air_ops_coordination),
       '{{SWPPP}}'      => humanize_enum(@report.swppp_controls),
-      
+      '{{SAF_DESC}}'   => @report.safety_desc,
       # Text Blocks
       '{{COMMENTARY}}'   => @report.commentary,
       '{{DEFICIENCY}}'   => @report.deficiency_desc,
@@ -152,7 +155,8 @@ class ReportsController < ApplicationController
         end
       end
     end
-
+    doc.headers.each { |p| replace_tags(p, data_mapping) } if doc.respond_to?(:headers)
+    doc.footers.each { |p| replace_tags(p, data_mapping) } if doc.respond_to?(:footers)
     # 4. Handle DYNAMIC TABLE: Bid Items
     bid_table = nil
     bid_header_row_index = nil
@@ -178,7 +182,9 @@ class ReportsController < ApplicationController
         # MAPPING
         new_row.cells[0].paragraphs[0].text = entry.bid_item&.code.to_s
         new_row.cells[1].paragraphs[0].text = entry.bid_item&.description.to_s
-        new_row.cells[2].paragraphs[0].text = entry.quantity.to_s
+        qty = entry.quantity.to_s
+        unit = entry.bid_item&.unit.to_s
+        new_row.cells[2].paragraphs[0].text = "#{qty} #{unit}"
         new_row.cells[3].paragraphs[0].text = entry.notes.to_s
         
         # Note: If you want to print the checklist answers into the Word Doc, 
@@ -213,8 +219,8 @@ class ReportsController < ApplicationController
       @report.equipment_entries.each do |entry|
         new_row = template_row.copy
         
-        new_row.cells[0].paragraphs[0].text = entry.make_model.to_s
-        new_row.cells[2].paragraphs[0].text = entry.hours.to_s 
+        new_row.cells[1].paragraphs[0].text = entry.make_model.to_s
+        new_row.cells[3].paragraphs[0].text = entry.hours.to_s 
         
         new_row.insert_before(template_row)
       end
@@ -292,6 +298,9 @@ class ReportsController < ApplicationController
         :temp_1, :temp_2, :temp_3,
         :wind_1, :wind_2, :wind_3,
         :precip_1, :precip_2, :precip_3,
+        :weather_summary_1, 
+        :weather_summary_2, 
+        :weather_summary_3,
         :weather, :temperature,
         
         :station_start, :station_end, :contractor, :plan_sheet, :relevant_docs,

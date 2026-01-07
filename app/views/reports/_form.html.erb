@@ -54,28 +54,37 @@
       </div>
     </div>
 
-    <%# --- WEATHER TRIO SECTION (Cleaned Up) --- %>
+    <%# --- WEATHER TRIO SECTION (UPDATED) --- %>
     <hr style="margin: 20px 0; border-top: 1px solid #e5e7eb;">
     <h3 style="font-size: 1rem; color: #4b5563; margin-bottom: 10px;">Weather Readings</h3>
     
     <div class="weather-grid">
+      <%# --- COLUMN 1: START --- %>
       <div class="weather-col">
         <label>Start of Shift</label>
         <%= form.number_field :temp_1, placeholder: "Temp (°F)", class: "mb-2" %>
+        <%# NEW FIELD %>
+        <%= form.text_field :weather_summary_1, placeholder: "Cond. (e.g. Sunny)", class: "mb-2" %>
         <%= form.text_field :wind_1, placeholder: "Wind (e.g. 5mph N)", class: "mb-2" %>
         <%= form.text_field :precip_1, placeholder: "Precipitation" %>
       </div>
 
+      <%# --- COLUMN 2: MIDDLE --- %>
       <div class="weather-col">
         <label>Mid Shift</label>
         <%= form.number_field :temp_2, placeholder: "Temp (°F)", class: "mb-2" %>
+        <%# NEW FIELD %>
+        <%= form.text_field :weather_summary_2, placeholder: "Cond. (e.g. Cloudy)", class: "mb-2" %>
         <%= form.text_field :wind_2, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_2, placeholder: "Precipitation" %>
       </div>
 
+      <%# --- COLUMN 3: END --- %>
       <div class="weather-col">
         <label>End of Shift</label>
         <%= form.number_field :temp_3, placeholder: "Temp (°F)", class: "mb-2" %>
+        <%# NEW FIELD %>
+        <%= form.text_field :weather_summary_3, placeholder: "Cond. (e.g. Rain)", class: "mb-2" %>
         <%= form.text_field :wind_3, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_3, placeholder: "Precipitation" %>
       </div>
@@ -245,7 +254,7 @@
            </div>
 
            <div class="form-group">
-              <%= entry_form.text_field :notes, placeholder: "Daily notes for this item...", class: "w-full" %>
+             <%= entry_form.text_field :notes, placeholder: "Daily notes for this item...", class: "w-full" %>
            </div>
         </div>
       <% end %>
