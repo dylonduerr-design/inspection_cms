@@ -8,7 +8,6 @@ export default class extends Controller {
     this.currentQuestions = [];
 
     // ON LOAD: Wake up all existing rows (for Edit/Show pages)
-    // This finds every bid item dropdown and manually runs the logic to set up its button
     this.element.querySelectorAll("select[name*='bid_item_id']").forEach(select => {
       this.updateRowState(select);
     });

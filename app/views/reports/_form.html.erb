@@ -99,6 +99,7 @@
         </button>
       </div>
     </div>
+  </div>
 
   <%# --- 3. CHECKLIST --- %>
   <div class="form-card">
@@ -202,42 +203,38 @@
   <%# --- 4. QUALITY ASSURANCE --- %>
   <div class="form-card">
     <h2>Quality Assurance & Control</h2>
-    <table class="modern-table" style="width: 100%; margin-bottom: 15px;">
-      <thead>
-        <tr>
-          <th style="width: 25%;">Test Performed</th>
-          <th style="width: 25%;">Location</th>
-          <th style="width: 20%;">Result</th>
-          <th style="width: 25%;">Remarks</th>
-          <th style="width: 5%;"></th>
-        </tr>
-      </thead>
-      <tbody id="qa-fields-container">
-        <%= form.fields_for :qa_entries do |qa_form| %>
-          <tr class="nested-fields">
-            <td>
-              <%= qa_form.select :qa_type, 
-                  QaEntry.qa_types.keys.map { |k| [k.humanize.titleize, k] }, 
-                  { prompt: "Select Test..." }, 
-                  class: "form-input" %>
-            </td>
-            <td><%= qa_form.text_field :location, placeholder: "Location", class: "form-input" %></td>
-            <td>
-              <%= qa_form.select :result, 
-                  QaEntry.results.keys.map { |k| [k.humanize.gsub("Qa ", "").titleize, k] }, 
-                  { prompt: "Result..." }, 
-                  class: "form-input" %>
-            </td>
-            <td><%= qa_form.text_field :note, placeholder: "Remarks", class: "form-input" %></td>
-            <td style="text-align: center;">
-              <% if qa_form.object&.persisted? %>
-                <label style="color:red; cursor:pointer;">Del <%= qa_form.check_box :_destroy %></label>
-              <% end %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+    
+    <%# MAESTRO FIX: Switched from Table to Divs to match the JS Template %>
+    <div id="qa-entries-container">
+      <%= form.fields_for :qa_entries do |qa_form| %>
+        <div class="qa-row nested-fields" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+          <div style="flex: 2;">
+            <%= qa_form.select :qa_type, 
+                QaEntry.qa_types.keys.map { |k| [k.humanize.titleize, k] }, 
+                { prompt: "Select Test..." }, 
+                class: "form-control" %>
+          </div>
+          <div style="flex: 2;">
+            <%= qa_form.text_field :location, placeholder: "Location", class: "form-control" %>
+          </div>
+          <div style="flex: 1;">
+            <%= qa_form.select :result, 
+                QaEntry.results.keys.map { |k| [k.humanize.gsub("Qa ", "").titleize, k] }, 
+                { prompt: "Result..." }, 
+                class: "form-control" %>
+          </div>
+          <div style="flex: 2;">
+            <%= qa_form.text_field :remarks, placeholder: "Remarks", class: "form-control" %>
+          </div>
+          <div style="text-align: center;">
+            <% if qa_form.object&.persisted? %>
+              <label style="color:red; cursor:pointer;">Del <%= qa_form.check_box :_destroy %></label>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    
     <button type="button" id="add-qa-btn" class="btn-secondary">+ Add QA Test</button>
   </div>
 
@@ -348,7 +345,6 @@
                      { class: "w-full", data: { action: "change->report-form#selectBidItem" } } 
                %>
              </div>
-             <%# Note: Location field removed per requirements %>
              <div class="form-group">
                <label class="text-muted-sm">Quantity</label>
                <%= entry_form.number_field :quantity, step: 0.01, placeholder: "Qty" %>
@@ -356,7 +352,9 @@
            </div>
 
            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-             <%= entry_form.hidden_field :checklist_answers, class: "checklist-answers-field" %>
+             <%= entry_form.hidden_field :checklist_answers, 
+                  class: "checklist-answers-field", 
+                  value: (entry_form.object.checklist_answers || {}).to_json %>
              <button type="button" 
                      class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" 
                      data-action="click->report-form#openChecklist">
@@ -464,7 +462,7 @@
 
 <%# --- TEMPLATES --- %>
 <template id="qa-template">
-  <div class="qa-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+  <div class="qa-row nested-fields" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
     
     <div style="flex: 2;">
       <select class="form-control" name="report[qa_entries_attributes][NEW_RECORD][qa_type]">
@@ -647,9 +645,10 @@ document.addEventListener("turbo:load", function() {
 
   setupAdder('add-equipment-btn', 'equipment-fields-container', 'equipment-template');
   setupAdder('add-quantity-btn', 'quantity-fields-container', 'quantity-template');
-  setupAdder('add-qa-btn', 'qa-fields-container', 'qa-template');
-  setupAdder('add-crew-btn', 'crew-fields-container', 'crew-template');
+  
+  // MAESTRO FIX: Unified the call for QA entries to the correct ID
   setupAdder('add-qa-btn', 'qa-entries-container', 'qa-template');
+  setupAdder('add-crew-btn', 'crew-fields-container', 'crew-template');
 
 
   // =========================================================
@@ -660,6 +659,9 @@ document.addEventListener("turbo:load", function() {
       const mainContractor = document.getElementById("main-contractor-input")?.value || "";
       const container = document.getElementById(type + "-fields-container");
       
+      // Safety check if container exists
+      if (!container) return;
+
       const allInputs = container.querySelectorAll(".auto-contractor");
       const lastInput = allInputs[allInputs.length - 1];
 
@@ -677,7 +679,7 @@ document.addEventListener("turbo:load", function() {
 
   // Debugging check:
   const weatherBtns = document.querySelectorAll('.weather-fetch-btn');
-  if(weatherBtns.length === 0) console.warn("Maestro Warning: No weather buttons found. Check HTML.");
+  // if(weatherBtns.length === 0) console.warn("Maestro Warning: No weather buttons found. Check HTML.");
 
   weatherBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {

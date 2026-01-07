@@ -130,7 +130,7 @@
     </table>
   </div>
 
-  <%# --- 3. QUALITY ASSURANCE (NEW!) --- %>
+  <%# --- 3. QUALITY ASSURANCE --- %>
   <% if @report.qa_entries.any? %>
     <div class="report-section">
       <h3>Quality Assurance</h3>
@@ -154,10 +154,12 @@
                 <% elsif qa.result == 'qa_fail' %>
                   <span class="text-danger">Fail</span>
                 <% else %>
+                  <%# Clean up "Qa Pending" to just "Pending" %>
                   <%= qa.result&.humanize&.gsub("Qa ", "")&.titleize %>
                 <% end %>
               </td>
-              <td><%= qa.note %></td>
+              <%# --- FIX IS HERE: Changed .note to .remarks --- %>
+              <td><%= qa.remarks %></td> 
             </tr>
           <% end %>
         </tbody>
