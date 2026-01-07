@@ -7,6 +7,7 @@
     <div class="header-actions">
       <%= link_to "Export to Excel", reports_path(request.query_parameters.merge(format: :csv)), class: "btn btn-secondary" %>
       <%= link_to "Create New Report", new_report_path, class: "btn btn-primary" %>
+      <%= link_to "Manage Bid Items", bid_items_path, class: "btn btn-secondary" %>
     </div>
   </div>
 
@@ -83,7 +84,7 @@
         <% if @reports.any? %>
           <% @reports.each do |report| %>
             <tr class="clickable-row">
-              <td><%= report.inspection_date %></td>
+              <td><%= report.start_date %></td>
               
               <td class="font-medium"><%= report.user.email %></td>
               

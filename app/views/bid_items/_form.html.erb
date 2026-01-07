@@ -1,9 +1,8 @@
-<%= form_with(model: bid_item) do |form| %>
+<%= form_with(model: bid_item, class: "contents") do |form| %>
   <% if bid_item.errors.any? %>
-    <div style="color: red">
-      <h2><%= pluralize(bid_item.errors.count, "error") %> prohibited this bid_item from being saved:</h2>
-
-      <ul>
+    <div class="error-explanation" style="background-color: #fef2f2; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+      <h2 style="font-weight: bold;"><%= pluralize(bid_item.errors.count, "error") %> prohibited this bid_item from being saved:</h2>
+      <ul style="list-style: disc; margin-left: 1.5rem;">
         <% bid_item.errors.each do |error| %>
           <li><%= error.full_message %></li>
         <% end %>
@@ -11,22 +10,38 @@
     </div>
   <% end %>
 
-  <div>
-    <%= form.label :code, style: "display: block" %>
-    <%= form.text_field :code %>
-  </div>
+  <div class="form-card" style="max-width: 600px; margin: 0 auto;">
+    
+    <div style="margin-bottom: 15px;">
+      <%= form.label :code, style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
+      <%= form.text_field :code, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+    </div>
 
-  <div>
-    <%= form.label :description, style: "display: block" %>
-    <%= form.text_field :description %>
-  </div>
+    <div style="margin-bottom: 15px;">
+      <%= form.label :description, style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
+      <%= form.text_field :description, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+    </div>
 
-  <div>
-    <%= form.label :unit, style: "display: block" %>
-    <%= form.text_field :unit %>
-  </div>
+    <div style="margin-bottom: 15px;">
+      <%= form.label :unit, style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
+      <%= form.text_field :unit, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+    </div>
 
-  <div>
-    <%= form.submit %>
+    <hr style="margin: 20px 0;">
+
+    <%# --- THE NEW CHECKLIST FIELD --- %>
+    <div style="margin-bottom: 15px;">
+      <%= form.label :questions_text, "Checklist Questions", style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
+      <div style="font-size: 0.85rem; color: #666; margin-bottom: 5px;">
+        <em>Enter one question per line. These will appear in the pop-up modal on reports.</em>
+      </div>
+      <%# We use the virtual attribute :questions_text here %>
+      <%= form.text_area :questions_text, rows: 8, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;", placeholder: "Is the subgrade compacted?\nIs the moisture content correct?\nPhotos taken?" %>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <%= form.submit "Save Bid Item", class: "btn btn-primary", style: "width: 100%;" %>
+    </div>
+
   </div>
 <% end %>
