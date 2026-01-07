@@ -340,10 +340,10 @@ class ReportsController < ApplicationController
         :id, :make_model, :hours, :quantity, :contractor, :_destroy
       ],
       
-      # C. INSPECTION ENTRIES (Bid Items) - Note: Location removed
+      # New (Fixed): Accepts the JSON String our JS sends
       inspection_entries_attributes: [
         :id, :bid_item_id, :quantity, :notes, :_destroy, 
-        { checklist_answers: {} } 
+        :checklist_answers 
       ],
       
       # D. QA ENTRIES (New!)

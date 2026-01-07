@@ -257,29 +257,29 @@
              </div>
              <div class="form-group">
                <label>Superintendent</label>
-               <%= crew_form.text_field :superintendent, placeholder: "Name" %>
+               <%= crew_form.number_field :superintendent, placeholder: "no." %>
              </div>
              <div class="form-group">
                <label>Foreman</label>
-               <%= crew_form.text_field :foreman, placeholder: "Name" %>
+               <%= crew_form.number_field :foreman, placeholder: "no." %>
              </div>
              <div class="form-group">
                <label>Surveyors</label>
-               <%= crew_form.number_field :survey_count, placeholder: "#" %>
+               <%= crew_form.number_field :survey_count, placeholder: "no." %>
              </div>
           </div>
           <div class="form-row">
              <div class="form-group">
                <label>Operators</label>
-               <%= crew_form.number_field :operator_count, placeholder: "#" %>
+               <%= crew_form.number_field :operator_count, placeholder: "no." %>
              </div>
              <div class="form-group">
                <label>Laborers</label>
-               <%= crew_form.number_field :laborer_count, placeholder: "#" %>
+               <%= crew_form.number_field :laborer_count, placeholder: "no." %>
              </div>
              <div class="form-group">
                <label>Electricians</label>
-               <%= crew_form.number_field :electrician_count, placeholder: "#" %>
+               <%= crew_form.number_field :electrician_count, placeholder: "no." %>
              </div>
              <div class="form-group" style="display:flex; align-items:flex-end;">
                <% if crew_form.object&.persisted? %>

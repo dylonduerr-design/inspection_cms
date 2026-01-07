@@ -18,7 +18,6 @@
         </span>
       </div>
       
-      <%# Action Buttons moved to header for easier access %>
       <div class="actions">
         <%= link_to "Edit Report", edit_report_path(@report), class: "btn btn-secondary" %>
         <%= link_to "Export Word", export_word_report_path(@report), class: "btn btn-primary" %>
@@ -54,25 +53,28 @@
     </div>
   </div>
 
-  <%# --- 1. WEATHER READINGS (New Grid) --- %>
+  <%# --- 1. WEATHER READINGS --- %>
   <div class="report-section">
     <h3>Weather Readings</h3>
     <div class="weather-grid">
       <div class="weather-col">
         <label>Start of Shift</label>
         <div><strong>Temp:</strong> <%= @report.temp_1 %>°F</div>
+        <div><strong>Cond:</strong> <%= @report.weather_summary_1 %></div>
         <div><strong>Wind:</strong> <%= @report.wind_1 %></div>
         <div><strong>Precip:</strong> <%= @report.precip_1 %></div>
       </div>
       <div class="weather-col">
         <label>Mid Shift</label>
         <div><strong>Temp:</strong> <%= @report.temp_2 %>°F</div>
+        <div><strong>Cond:</strong> <%= @report.weather_summary_2 %></div>
         <div><strong>Wind:</strong> <%= @report.wind_2 %></div>
         <div><strong>Precip:</strong> <%= @report.precip_2 %></div>
       </div>
       <div class="weather-col">
         <label>End of Shift</label>
         <div><strong>Temp:</strong> <%= @report.temp_3 %>°F</div>
+        <div><strong>Cond:</strong> <%= @report.weather_summary_3 %></div>
         <div><strong>Wind:</strong> <%= @report.wind_3 %></div>
         <div><strong>Precip:</strong> <%= @report.precip_3 %></div>
       </div>
@@ -83,7 +85,6 @@
   <div class="report-section">
     <h3>Site Compliance</h3>
 
-    <%# Alerts for Issues %>
     <% if @report.yes_deficiency? || @report.cdr? || @report.ncr? %>
       <div class="alert alert-danger" style="margin-bottom: 15px;">
         <strong>Deficiency Reported:</strong> <%= @report.deficiency_status.humanize %>
@@ -129,28 +130,96 @@
     </table>
   </div>
 
-  <%# --- 3. CREW & EQUIPMENT --- %>
-  <div class="report-section">
-    <h3>Crew & Equipment</h3>
-    <div class="meta-data-grid" style="margin-bottom: 20px;">
-      <div class="meta-item"><label>Foreman</label><div class="value"><%= @report.foreman %></div></div>
-      <div class="meta-item"><label>Laborers</label><div class="value"><%= @report.laborer_count %></div></div>
-      <div class="meta-item"><label>Operators</label><div class="value"><%= @report.operator_count %></div></div>
-      <div class="meta-item"><label>Surveyors</label><div class="value"><%= @report.survey_count %></div></div>
+  <%# --- 3. QUALITY ASSURANCE (NEW!) --- %>
+  <% if @report.qa_entries.any? %>
+    <div class="report-section">
+      <h3>Quality Assurance</h3>
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>Test Performed</th>
+            <th>Location</th>
+            <th>Result</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @report.qa_entries.each do |qa| %>
+            <tr>
+              <td><%= qa.qa_type&.humanize&.titleize %></td>
+              <td><%= qa.location %></td>
+              <td>
+                <% if qa.result == 'qa_pass' %>
+                  <span class="text-success">Pass</span>
+                <% elsif qa.result == 'qa_fail' %>
+                  <span class="text-danger">Fail</span>
+                <% else %>
+                  <%= qa.result&.humanize&.gsub("Qa ", "")&.titleize %>
+                <% end %>
+              </td>
+              <td><%= qa.note %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
+  <% end %>
 
+  <%# --- 4. CREW & EQUIPMENT (UPDATED) --- %>
+  <div class="report-section">
+    <h3>Workforce & Equipment</h3>
+    
+    <%# NEW WORKFORCE TABLE %>
+    <% if @report.crew_entries.any? %>
+      <h4 style="margin-top:0;">Workforce Log</h4>
+      <table class="modern-table" style="margin-bottom: 20px;">
+        <thead>
+          <tr>
+            <th>Contractor</th>
+            <th>Superintendent</th>
+            <th>Foreman</th>
+            <th class="text-center">Survey</th>
+            <th class="text-center">Operator</th>
+            <th class="text-center">Laborer</th>
+            <th class="text-center">Electrician</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @report.crew_entries.each do |crew| %>
+            <tr>
+              <td class="font-bold"><%= crew.contractor %></td>
+              <td><%= crew.superintendent %></td>
+              <td><%= crew.foreman %></td>
+              <td class="text-center"><%= crew.survey_count %></td>
+              <td class="text-center"><%= crew.operator_count %></td>
+              <td class="text-center"><%= crew.laborer_count %></td>
+              <td class="text-center"><%= crew.electrician_count %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="text-muted-sm">No workforce recorded.</p>
+    <% end %>
+
+    <%# UPDATED EQUIPMENT TABLE %>
+    <h4 style="margin-top: 15px;">Equipment Log</h4>
     <% if @report.equipment_entries.any? %>
       <table class="modern-table">
         <thead>
           <tr>
+            <th>Contractor</th>
             <th>Make/Model</th>
+            <th class="text-center">Qty</th>
             <th class="text-right">Hours</th>
           </tr>
         </thead>
         <tbody>
           <% @report.equipment_entries.each do |equip| %>
             <tr>
+              <td><%= equip.contractor %></td>
               <td><%= equip.make_model %></td>
+              <td class="text-center"><%= equip.quantity %></td>
               <td class="text-right"><%= equip.hours %></td>
             </tr>
           <% end %>
@@ -161,7 +230,7 @@
     <% end %>
   </div>
 
-  <%# --- 4. INSPECTION ENTRIES (Cards with Checklists) --- %>
+  <%# --- 5. INSPECTION ENTRIES (FIXED: Removed Location) --- %>
   <div class="report-section">
     <h3>Quantities & Inspection Entries</h3>
     
@@ -179,14 +248,12 @@
             </div>
           </div>
           
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div>
-              <p style="margin-bottom: 5px;"><strong>Location:</strong> <%= entry.location.present? ? entry.location : "N/A" %></p>
-              <p style="margin-bottom: 5px;"><strong>Notes:</strong> <%= entry.notes.present? ? entry.notes : "-" %></p>
-            </div>
+          <div style="display: block;">
+            <%# FIXED: Location Removed %>
+            <p style="margin-bottom: 5px;"><strong>Notes:</strong> <%= entry.notes.present? ? entry.notes : "-" %></p>
 
             <% if entry.checklist_answers.present? %>
-              <div style="background: #f7fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0;">
+              <div style="background: #f7fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0; margin-top: 10px;">
                 <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 0.85rem; color: #4a5568; text-transform: uppercase;">Checklist Results</h4>
                 <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem;">
                   <% entry.checklist_answers.each do |question, answer| %>
@@ -206,7 +273,7 @@
     <% end %>
   </div>
 
-  <%# --- 5. ADDITIONAL INFORMATION --- %>
+  <%# --- 6. ADDITIONAL INFORMATION --- %>
   <% if @report.additional_activities.present? || @report.additional_info.present? || @report.commentary.present? %>
     <div class="report-section">
       <h3>Additional Information</h3>
@@ -234,7 +301,7 @@
     </div>
   <% end %>
 
-  <%# --- 6. PHOTOS & DOCUMENTS --- %>
+  <%# --- 7. PHOTOS & DOCUMENTS --- %>
   <div class="report-section">
     <h3>Attached Documents & Photos</h3>
     
@@ -271,7 +338,7 @@
     <% end %>
   </div>
 
-  <%# --- 7. WORKFLOW ACTIONS --- %>
+  <%# --- 8. WORKFLOW ACTIONS --- %>
   <div class="action-bar-container">
     <% if @report.creating? || @report.revise? %>
       <div class="primary-actions">
@@ -302,7 +369,7 @@
     <% end %>
   </div>
 
-  <%# --- 8. ACTIVITY LOG --- %>
+  <%# --- 9. ACTIVITY LOG --- %>
   <div class="report-section">
     <h3>Activity Log</h3>
     <% if @report.activity_logs.any? %>
