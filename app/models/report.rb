@@ -7,9 +7,9 @@ class Report < ApplicationRecord
     self.result ||= :pending
   end
 
-  # --- 2. VALIDATIONS (The Safety Net) ---
-  validates :inspection_date, presence: true
-  # REMOVED: validates :inspector, presence: true (This column is gone!)
+ # --- 2. VALIDATIONS ---
+  # UPDATE: Renamed from inspection_date
+  validates :start_date, presence: true
   validates :project, presence: true
   validates :phase, presence: true
 
@@ -45,6 +45,9 @@ class Report < ApplicationRecord
   
   enum qa_type: { density: 0, gradation: 1, smoothness: 2, final_grade: 3, compaction: 4, surface_prep: 5 }
   enum qa_result: { qa_pass: 0, qa_fail: 1, results_pending: 2, info_only: 3 }
+  enum air_ops_coordination: { air_na: 0, air_yes: 1, air_no: 2 }
+  enum swppp_controls: { swppp_na: 0, swppp_yes: 1, swppp_no: 2 }
+  
 
   # --- 5. SEARCH SCOPES ---
   
@@ -61,6 +64,9 @@ class Report < ApplicationRecord
   
   scope :filter_by_bid_item, ->(bid_item_id) {
     joins(:inspection_entries).where(inspection_entries: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
+  }
+  scope :filter_by_date_range, ->(start_date, end_date) { 
+    where(start_date: start_date..end_date) if start_date.present? && end_date.present?
   }
 
   # --- 6. HELPER METHODS ---

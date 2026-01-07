@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_02_213746) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_06_235352) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -77,6 +77,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_02_213746) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "checklist_answers", default: {}
     t.index ["bid_item_id"], name: "index_inspection_entries_on_bid_item_id"
     t.index ["report_id"], name: "index_inspection_entries_on_report_id"
   end
@@ -103,7 +104,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_02_213746) do
 
   create_table "reports", force: :cascade do |t|
     t.string "dir_number"
-    t.date "inspection_date"
+    t.date "start_date"
     t.bigint "project_id", null: false
     t.bigint "phase_id", null: false
     t.integer "status"
@@ -136,6 +137,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_02_213746) do
     t.integer "operator_count"
     t.integer "survey_count"
     t.bigint "user_id", null: false
+    t.date "end_date"
+    t.integer "temp_1"
+    t.integer "temp_2"
+    t.integer "temp_3"
+    t.string "wind_1"
+    t.string "wind_2"
+    t.string "wind_3"
+    t.string "precip_1"
+    t.string "precip_2"
+    t.string "precip_3"
+    t.integer "air_ops_coordination", default: 0
+    t.integer "swppp_controls", default: 0
+    t.text "additional_activities"
+    t.text "additional_info"
     t.index ["phase_id"], name: "index_reports_on_phase_id"
     t.index ["project_id"], name: "index_reports_on_project_id"
     t.index ["user_id"], name: "index_reports_on_user_id"

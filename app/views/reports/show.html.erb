@@ -1,5 +1,6 @@
 <div class="report-container">
   
+  <%# --- NOTIFICATIONS --- %>
   <% if notice %>
     <div class="alert alert-success"><%= notice %></div>
   <% end %>
@@ -7,18 +8,32 @@
     <div class="alert alert-danger"><%= alert %></div>
   <% end %>
 
+  <%# --- HEADER & META DATA --- %>
   <div class="report-header">
     <div class="header-title">
-      <h1>Daily Inspection Report #<%= @report.dir_number %></h1>
-      <span class="status-badge status-<%= @report.status %>">
-        <%= @report.status&.humanize || "Unknown" %>
-      </span>
+      <div>
+        <h1>DIR #<%= @report.dir_number %></h1>
+        <span class="status-badge status-<%= @report.status %>">
+          <%= @report.status&.humanize || "Unknown" %>
+        </span>
+      </div>
+      
+      <%# Action Buttons moved to header for easier access %>
+      <div class="actions">
+        <%= link_to "Edit Report", edit_report_path(@report), class: "btn btn-secondary" %>
+        <%= link_to "Export Word", export_word_report_path(@report), class: "btn btn-primary" %>
+        <%= link_to "Back", reports_path, class: "btn btn-clear" %>
+      </div>
     </div>
     
     <div class="meta-data-grid">
       <div class="meta-item">
-        <label>Date</label>
-        <div class="value"><%= @report.inspection_date %></div>
+        <label>Start Date</label>
+        <div class="value"><%= @report.start_date&.strftime("%b %d, %Y") %></div>
+      </div>
+      <div class="meta-item">
+        <label>End Date</label>
+        <div class="value"><%= @report.end_date&.strftime("%b %d, %Y") || "-" %></div>
       </div>
       <div class="meta-item">
         <label>Inspector</label>
@@ -33,44 +48,231 @@
         <div class="value"><%= @report.phase&.name %></div>
       </div>
       <div class="meta-item">
-        <label>Result</label>
-        <div class="value"><%= @report.result&.humanize || "Pending" %></div>
+        <label>Shift</label>
+        <div class="value"><%= @report.shift_start %> - <%= @report.shift_end %></div>
       </div>
     </div>
   </div>
 
+  <%# --- 1. WEATHER READINGS (New Grid) --- %>
   <div class="report-section">
-    <h3>Quantities Reported</h3>
-    <% if @report.inspection_entries.any? %>
+    <h3>Weather Readings</h3>
+    <div class="weather-grid">
+      <div class="weather-col">
+        <label>Start of Shift</label>
+        <div><strong>Temp:</strong> <%= @report.temp_1 %>°F</div>
+        <div><strong>Wind:</strong> <%= @report.wind_1 %></div>
+        <div><strong>Precip:</strong> <%= @report.precip_1 %></div>
+      </div>
+      <div class="weather-col">
+        <label>Mid Shift</label>
+        <div><strong>Temp:</strong> <%= @report.temp_2 %>°F</div>
+        <div><strong>Wind:</strong> <%= @report.wind_2 %></div>
+        <div><strong>Precip:</strong> <%= @report.precip_2 %></div>
+      </div>
+      <div class="weather-col">
+        <label>End of Shift</label>
+        <div><strong>Temp:</strong> <%= @report.temp_3 %>°F</div>
+        <div><strong>Wind:</strong> <%= @report.wind_3 %></div>
+        <div><strong>Precip:</strong> <%= @report.precip_3 %></div>
+      </div>
+    </div>
+  </div>
+
+  <%# --- 2. SITE COMPLIANCE --- %>
+  <div class="report-section">
+    <h3>Site Compliance</h3>
+
+    <%# Alerts for Issues %>
+    <% if @report.yes_deficiency? || @report.cdr? || @report.ncr? %>
+      <div class="alert alert-danger" style="margin-bottom: 15px;">
+        <strong>Deficiency Reported:</strong> <%= @report.deficiency_status.humanize %>
+        <p style="margin-top: 5px;"><%= @report.deficiency_desc %></p>
+      </div>
+    <% end %>
+
+    <% if @report.safety_yes? %>
+      <div class="alert alert-danger" style="margin-bottom: 15px;">
+        <strong>Safety Incident Reported</strong>
+        <p style="margin-top: 5px;"><%= @report.safety_desc %></p>
+      </div>
+    <% end %>
+
+    <table class="modern-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Status</th>
+          <th>Category</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Traffic Control</strong></td>
+          <td><%= @report.traffic_control&.humanize %></td>
+          <td><strong>Environmental</strong></td>
+          <td><%= @report.environmental&.humanize %></td>
+        </tr>
+        <tr>
+          <td><strong>Security</strong></td>
+          <td><%= @report.security&.humanize %></td>
+          <td><strong>Air Ops</strong></td>
+          <td><%= @report.air_ops_coordination&.humanize %></td>
+        </tr>
+        <tr>
+          <td><strong>SWPPP Controls</strong></td>
+          <td><%= @report.swppp_controls&.humanize %></td>
+          <td></td><td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <%# --- 3. CREW & EQUIPMENT --- %>
+  <div class="report-section">
+    <h3>Crew & Equipment</h3>
+    <div class="meta-data-grid" style="margin-bottom: 20px;">
+      <div class="meta-item"><label>Foreman</label><div class="value"><%= @report.foreman %></div></div>
+      <div class="meta-item"><label>Laborers</label><div class="value"><%= @report.laborer_count %></div></div>
+      <div class="meta-item"><label>Operators</label><div class="value"><%= @report.operator_count %></div></div>
+      <div class="meta-item"><label>Surveyors</label><div class="value"><%= @report.survey_count %></div></div>
+    </div>
+
+    <% if @report.equipment_entries.any? %>
       <table class="modern-table">
         <thead>
           <tr>
-            <th>Bid Item</th>
-            <th>Description</th>
-            <th>Location</th>
-            <th class="text-right">Quantity</th>
-            <th class="text-center">Unit</th>
+            <th>Make/Model</th>
+            <th class="text-right">Hours</th>
           </tr>
         </thead>
         <tbody>
-          <% @report.inspection_entries.each do |entry| %>
+          <% @report.equipment_entries.each do |equip| %>
             <tr>
-              <td class="code-font"><%= entry.bid_item&.code %></td>
-              <td><%= entry.bid_item&.description %></td>
-              <td><%= entry.location %></td>
-              <td class="text-right font-bold"><%= entry.quantity %></td>
-              <td class="text-center text-muted"><%= entry.bid_item&.unit %></td>
+              <td><%= equip.make_model %></td>
+              <td class="text-right"><%= equip.hours %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     <% else %>
+      <p class="text-muted-sm">No equipment recorded.</p>
+    <% end %>
+  </div>
+
+  <%# --- 4. INSPECTION ENTRIES (Cards with Checklists) --- %>
+  <div class="report-section">
+    <h3>Quantities & Inspection Entries</h3>
+    
+    <% if @report.inspection_entries.any? %>
+      <% @report.inspection_entries.each do |entry| %>
+        <div class="nested-entry-card" style="background: white;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
+            <div>
+              <span class="code-font" style="font-weight: bold; font-size: 1.1em;"><%= entry.bid_item&.code %></span> 
+              <span style="color: #4a5568;"> - <%= entry.bid_item&.description %></span>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-weight: bold; font-size: 1.2em;"><%= entry.quantity %></span>
+              <span class="text-muted" style="font-size: 0.9em;"><%= entry.bid_item&.unit %></span>
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <p style="margin-bottom: 5px;"><strong>Location:</strong> <%= entry.location.present? ? entry.location : "N/A" %></p>
+              <p style="margin-bottom: 5px;"><strong>Notes:</strong> <%= entry.notes.present? ? entry.notes : "-" %></p>
+            </div>
+
+            <% if entry.checklist_answers.present? %>
+              <div style="background: #f7fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 0.85rem; color: #4a5568; text-transform: uppercase;">Checklist Results</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem;">
+                  <% entry.checklist_answers.each do |question, answer| %>
+                    <li style="margin-bottom: 4px;">
+                      <span style="color: #718096;"><%= question %>:</span> 
+                      <strong style="<%= answer == 'No' ? 'color: var(--danger);' : '' %>"><%= answer %></strong>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
       <div class="empty-state">No quantities recorded for this report.</div>
     <% end %>
   </div>
 
-  <div class="action-bar-container">
+  <%# --- 5. ADDITIONAL INFORMATION --- %>
+  <% if @report.additional_activities.present? || @report.additional_info.present? || @report.commentary.present? %>
+    <div class="report-section">
+      <h3>Additional Information</h3>
+      
+      <% if @report.additional_activities.present? %>
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: bold; color: #718096; display: block; margin-bottom: 5px;">Additional Activities</label>
+          <div style="white-space: pre-wrap; background: #f9fafb; padding: 10px; border-radius: 4px;"><%= @report.additional_activities %></div>
+        </div>
+      <% end %>
+
+      <% if @report.additional_info.present? %>
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: bold; color: #718096; display: block; margin-bottom: 5px;">Additional Info</label>
+          <div style="white-space: pre-wrap; background: #f9fafb; padding: 10px; border-radius: 4px;"><%= @report.additional_info %></div>
+        </div>
+      <% end %>
+
+      <% if @report.commentary.present? %>
+        <div>
+          <label style="font-weight: bold; color: #718096; display: block; margin-bottom: 5px;">General Commentary</label>
+          <div style="white-space: pre-wrap; background: #f9fafb; padding: 10px; border-radius: 4px;"><%= @report.commentary %></div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# --- 6. PHOTOS & DOCUMENTS --- %>
+  <div class="report-section">
+    <h3>Attached Documents & Photos</h3>
     
+    <% if @report.report_attachments.any? %>
+      <div class="gallery-grid">
+        <% @report.report_attachments.each do |attach| %>
+          <div class="gallery-card">
+            <div class="thumbnail-area">
+              <% if attach.file.attached? %>
+                <% if attach.file.representable? %>
+                  <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank" do %>
+                    <%= image_tag attach.file.representation(resize_to_limit: [300, 300]) %>
+                  <% end %>
+                <% else %>
+                  <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank", style: "text-decoration: none;" do %>
+                    <div class="doc-icon">📄</div>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+            
+            <div class="caption">
+              <%= attach.caption.present? ? attach.caption : attach.file.filename %>
+            </div>
+            
+            <div class="download-link">
+              <%= link_to "Download", rails_blob_path(attach.file, disposition: "attachment") %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="empty-text">No attachments found.</p>
+    <% end %>
+  </div>
+
+  <%# --- 7. WORKFLOW ACTIONS --- %>
+  <div class="action-bar-container">
     <% if @report.creating? || @report.revise? %>
       <div class="primary-actions">
         <%= button_to "Submit for QC Review", submit_for_qc_report_path(@report), method: :post, class: "btn btn-primary" %>
@@ -98,53 +300,9 @@
         </div>
       </div>
     <% end %>
-
-    <div class="nav-links">
-      <%= link_to "📥 Export to Word", export_word_report_path(@report), class: "btn-link" %>
-      <span class="divider">|</span>
-      <%= link_to "Edit Details", edit_report_path(@report) %>
-      <span class="divider">|</span>
-      <%= link_to "Back to List", reports_path %>
-    </div>
   </div>
 
-  <div class="report-section">
-    <h3>Attached Documents & Photos</h3>
-    
-    <%# FIX 2: Use native .attached? check %>
-    <% if @report.attachments.attached? %>
-      <div class="gallery-grid">
-        <%# FIX 3: Iterate over native attachments %>
-        <% @report.attachments.each do |file| %>
-          <div class="gallery-card">
-            <div class="thumbnail-area">
-              <% if file.representable? %>
-                <%= link_to rails_blob_path(file, disposition: "attachment"), target: "_blank" do %>
-                  <% if file.image? %>
-                    <%= image_tag file.variant(resize_to_limit: [300, 300]) %>
-                  <% else %>
-                    <div class="doc-icon">📄</div>
-                  <% end %>
-                <% end %>
-              <% else %>
-                <div class="doc-icon">📂</div>
-              <% end %>
-            </div>
-            
-            <%# FIX 4: Use filename since we don't have captions anymore %>
-            <div class="caption"><%= file.filename %></div>
-            
-            <div class="download-link">
-              <%= link_to "Download", rails_blob_path(file, disposition: "attachment") %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    <% else %>
-      <p class="empty-text">No attachments found.</p>
-    <% end %>
-  </div>
-
+  <%# --- 8. ACTIVITY LOG --- %>
   <div class="report-section">
     <h3>Activity Log</h3>
     <% if @report.activity_logs.any? %>

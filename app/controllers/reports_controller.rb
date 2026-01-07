@@ -29,7 +29,9 @@ class ReportsController < ApplicationController
   # GET /reports/new
   def new
     @report = Report.new
+    # Build 3 entries by default
     3.times { @report.inspection_entries.build }
+    # Build 1 equipment entry by default
     1.times { @report.equipment_entries.build }
   end
 
@@ -91,22 +93,54 @@ class ReportsController < ApplicationController
     doc = Docx::Document.open(template_path)
 
     # 2. Define the Mapping for Single Fields
+    # Helper for safe strings
+    safe_date = @report.start_date&.strftime("%m/%d/%Y")
+    
+    # Logic to combine the weather trios for old templates
+    combined_temp = [@report.temp_1, @report.temp_2, @report.temp_3].compact.join(" / ")
+    combined_wind = [@report.wind_1, @report.wind_2, @report.wind_3].compact.join(" / ")
+    combined_precip = [@report.precip_1, @report.precip_2, @report.precip_3].compact.join(" / ")
+
     data_mapping = {
-      '{{DIR_NUM}}'   => @report.dir_number,
-      '{{DATE}}'      => @report.inspection_date&.strftime("%m/%d/%Y"),
-      '{{PROJECT}}'   => @report.project&.name,
-      '{{PHASE}}'     => @report.phase&.name,
-      '{{INSPECTOR}}' => @report.user&.email,
-      '{{SHIFT}}'     => "#{@report.shift_start} - #{@report.shift_end}",
-      '{{WEATHER}}'   => @report.weather,
-      '{{TEMP}}'      => @report.temperature,
-      '{{CONTRACTOR}}'=> @report.contractor,
-      '{{TC_STATUS}}' => humanize_enum(@report.traffic_control),
-      '{{ENV_STATUS}}'=> humanize_enum(@report.environmental),
-      '{{SEC_STATUS}}'=> humanize_enum(@report.security),
-      '{{SAF_STATUS}}'=> humanize_enum(@report.safety_incident),
-      '{{COMMENTARY}}'=> @report.commentary,
-      '{{DEFICIENCY}}'=> @report.deficiency_desc
+      '{{DIR_NUM}}'    => @report.dir_number,
+      '{{DATE}}'       => safe_date,
+      '{{END_DATE}}'   => @report.end_date&.strftime("%m/%d/%Y"),
+      '{{PROJECT}}'    => @report.project&.name,
+      '{{PHASE}}'      => @report.phase&.name,
+      '{{INSPECTOR}}'  => @report.user&.email,
+      '{{SHIFT}}'      => "#{@report.shift_start} - #{@report.shift_end}",
+      
+      # Weather Trio Mappings
+      '{{TEMP}}'       => combined_temp,      # Combined for backward compatibility
+      '{{TEMP_1}}'     => @report.temp_1,
+      '{{TEMP_2}}'     => @report.temp_2,
+      '{{TEMP_3}}'     => @report.temp_3,
+
+      '{{WIND}}'       => combined_wind,
+      '{{WIND_1}}'     => @report.wind_1,
+      '{{WIND_2}}'     => @report.wind_2,
+      '{{WIND_3}}'     => @report.wind_3,
+
+      '{{PRECIP}}'     => combined_precip,
+      '{{PRECIP_1}}'   => @report.precip_1,
+      '{{PRECIP_2}}'   => @report.precip_2,
+      '{{PRECIP_3}}'   => @report.precip_3,
+      
+      '{{CONTRACTOR}}' => @report.contractor,
+      
+      # Enums
+      '{{TC_STATUS}}'  => humanize_enum(@report.traffic_control),
+      '{{ENV_STATUS}}' => humanize_enum(@report.environmental),
+      '{{SEC_STATUS}}' => humanize_enum(@report.security),
+      '{{SAF_STATUS}}' => humanize_enum(@report.safety_incident),
+      '{{AIR_OPS}}'    => humanize_enum(@report.air_ops_coordination),
+      '{{SWPPP}}'      => humanize_enum(@report.swppp_controls),
+      
+      # Text Blocks
+      '{{COMMENTARY}}'   => @report.commentary,
+      '{{DEFICIENCY}}'   => @report.deficiency_desc,
+      '{{ADD_ACTIVITY}}' => @report.additional_activities,
+      '{{ADD_INFO}}'     => @report.additional_info
     }
 
     # 3. Replace text in General Paragraphs & Tables
@@ -141,16 +175,19 @@ class ReportsController < ApplicationController
       @report.inspection_entries.each do |entry|
         new_row = template_row.copy
         
-        # MAPPING (Based on your template columns)
+        # MAPPING
         new_row.cells[0].paragraphs[0].text = entry.bid_item&.code.to_s
         new_row.cells[1].paragraphs[0].text = entry.bid_item&.description.to_s
         new_row.cells[2].paragraphs[0].text = entry.quantity.to_s
         new_row.cells[3].paragraphs[0].text = entry.notes.to_s
         
+        # Note: If you want to print the checklist answers into the Word Doc, 
+        # we would need to loop through entry.checklist_answers here.
+        # For now, we leave it as standard columns.
+        
         new_row.insert_before(template_row)
       end
       
-      # FIX: Use .node.remove instead of .remove
       template_row.node.remove
     end
 
@@ -176,14 +213,12 @@ class ReportsController < ApplicationController
       @report.equipment_entries.each do |entry|
         new_row = template_row.copy
         
-        # MAPPING
         new_row.cells[0].paragraphs[0].text = entry.make_model.to_s
         new_row.cells[2].paragraphs[0].text = entry.hours.to_s 
         
         new_row.insert_before(template_row)
       end
       
-      # FIX: Use .node.remove instead of .remove
       template_row.node.remove
     end
 
@@ -195,7 +230,7 @@ class ReportsController < ApplicationController
       file_data = File.binread(temp_file.path)
       
       send_data file_data, 
-                filename: "DIR_#{@report.dir_number}_#{@report.inspection_date}.docx",
+                filename: "DIR_#{@report.dir_number}_#{@report.start_date}.docx",
                 type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 disposition: 'attachment'
     ensure
@@ -213,6 +248,7 @@ class ReportsController < ApplicationController
     def replace_tags(paragraph, mapping)
       mapping.each do |key, value|
         if paragraph.text.include?(key)
+          # Use gsub to replace all instances
           paragraph.text = paragraph.text.gsub(key, value.to_s)
         end
       end
@@ -220,9 +256,10 @@ class ReportsController < ApplicationController
 
     def humanize_enum(val)
       case val
-      when 'tc_yes', 'env_yes', 'sec_yes', 'safety_yes' then 'Yes'
-      when 'tc_no', 'env_no', 'sec_no', 'safety_no'     then 'No'
-      when 'tc_na', 'env_na', 'sec_na', 'safety_na'     then 'N/A'
+      # Standard Yes/No/NA logic
+      when 'tc_yes', 'env_yes', 'sec_yes', 'safety_yes', 'air_yes', 'swppp_yes' then 'Yes'
+      when 'tc_no', 'env_no', 'sec_no', 'safety_no', 'air_no', 'swppp_no'    then 'No'
+      when 'tc_na', 'env_na', 'sec_na', 'safety_na', 'air_na', 'swppp_na'    then 'N/A'
       else val&.humanize
       end
     end
@@ -232,6 +269,8 @@ class ReportsController < ApplicationController
       @reports = @reports.filter_by_inspector(params[:inspector]) if params[:inspector].present?
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
+      
+      # UPDATED: Use start_date
       @reports = @reports.filter_by_date_range(params[:start_date], params[:end_date]) if params[:start_date].present?
       
       if params[:result].present?
@@ -241,17 +280,44 @@ class ReportsController < ApplicationController
 
     def report_params
       params.require(:report).permit(
-        :dir_number, :inspection_date, :project_id, :phase_id, 
+        # --- 1. NEW DATE FIELDS ---
+        :start_date, 
+        :end_date,
+        
+        :dir_number, :project_id, :phase_id, 
         :status, :result,
-        :shift_start, :shift_end, :weather, :temperature,
+        :shift_start, :shift_end,
+        
+        # --- 2. WEATHER TRIO & OLD FIELDS ---
+        :temp_1, :temp_2, :temp_3,
+        :wind_1, :wind_2, :wind_3,
+        :precip_1, :precip_2, :precip_3,
+        :weather, :temperature,
+        
         :station_start, :station_end, :contractor, :plan_sheet, :relevant_docs,
         :deficiency_status, :deficiency_desc,
-        :traffic_control, :environmental, :security, :safety_incident, :safety_desc,
-        :commentary,
+        
+        # --- 3. NEW & OLD ENUMS ---
+        :traffic_control, :environmental, :security, :safety_incident, 
+        :air_ops_coordination, :swppp_controls,
+        
+        :safety_desc, :commentary,
+        
+        # --- 4. NEW TEXT FIELDS ---
+        :additional_activities, :additional_info,
+
         :qa_activity, :qa_bid_item_id, :qa_type, :qa_result,
         :foreman, :laborer_count, :operator_count, :survey_count,
+        
         attachments: [], 
-        inspection_entries_attributes: [:id, :bid_item_id, :quantity, :location, :notes, :_destroy],
+        
+        # --- 5. NESTED ATTRIBUTES w/ JSONB ---
+        # Note the { checklist_answers: {} } at the end!
+        inspection_entries_attributes: [
+          :id, :bid_item_id, :quantity, :location, :notes, :_destroy,
+          { checklist_answers: {} } 
+        ],
+        
         equipment_entries_attributes: [:id, :make_model, :hours, :_destroy],
         report_attachments_attributes: [:id, :caption, :file, :_destroy]
       )
@@ -260,25 +326,29 @@ class ReportsController < ApplicationController
     def generate_csv(reports)
       CSV.generate(headers: true) do |csv|
         csv << [
-          "DIR #", "Date", "Inspector", "Project", "Phase", "Status", 
-          "Shift", "Weather", "Temp (F)", "Contractor",
+          "DIR #", "Start Date", "End Date", "Inspector", "Project", "Phase", "Status", 
+          "Shift", "Temps (1/2/3)", "Winds (1/2/3)", "Contractor",
           "Item Code", "Item Description", "Quantity", "Unit", "Location", "Notes"
         ]
         
         reports.each do |report|
           inspector_name = report.user&.email || "Unknown"
+          
+          # Combine weather for CSV readability
+          temps = [report.temp_1, report.temp_2, report.temp_3].compact.join("/")
+          winds = [report.wind_1, report.wind_2, report.wind_3].compact.join("/")
 
           if report.inspection_entries.empty?
             csv << [
-              report.dir_number, report.inspection_date, inspector_name, report.project&.name, report.phase&.name, report.status&.humanize,
-              "#{report.shift_start}-#{report.shift_end}", report.weather, report.temperature, report.contractor,
+              report.dir_number, report.start_date, report.end_date, inspector_name, report.project&.name, report.phase&.name, report.status&.humanize,
+              "#{report.shift_start}-#{report.shift_end}", temps, winds, report.contractor,
               "---", "No Activity", 0, "---", "---", report.commentary
             ]
           else
             report.inspection_entries.each do |entry|
               csv << [
-                report.dir_number, report.inspection_date, inspector_name, report.project&.name, report.phase&.name, report.status&.humanize,
-                "#{report.shift_start}-#{report.shift_end}", report.weather, report.temperature, report.contractor,
+                report.dir_number, report.start_date, report.end_date, inspector_name, report.project&.name, report.phase&.name, report.status&.humanize,
+                "#{report.shift_start}-#{report.shift_end}", temps, winds, report.contractor,
                 entry.bid_item&.code, entry.bid_item&.description, entry.quantity, entry.bid_item&.unit, entry.location, entry.notes
               ]
             end

@@ -297,3 +297,134 @@ body {
 .alert { padding: 15px; margin-bottom: 20px; border-radius: 6px; font-weight: 500; }
 .alert-success { background-color: var(--status-approved-bg); color: var(--status-approved-text); border: 1px solid var(--status-approved-text); }
 .alert-danger { background-color: var(--status-revise-bg); color: var(--status-revise-text); border: 1px solid var(--status-revise-text); }
+
+/* =========================================
+   8. NEW FEATURES (Weather, Modals, Checklists)
+   ========================================= */
+
+/* --- A. Weather Trio Grid --- */
+/* Replaces the inline flex logic for a cleaner 3-column layout */
+.weather-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 10px;
+}
+
+/* On mobile, stack them vertically */
+@media (max-width: 768px) {
+  .weather-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.weather-col {
+  background: var(--bg-header);
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.weather-col label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+
+/* --- B. Nested Entry Card (Bid Items) --- */
+/* Makes each bid item row look like a distinct card */
+.nested-entry-card {
+  background-color: var(--bg-body); /* Slightly darker than card to show depth */
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 15px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.nested-entry-card:hover {
+  border-color: var(--primary);
+}
+
+
+/* --- C. Modal / Dialog Styles --- */
+/* Browser default dialogs are ugly; this themes them */
+dialog {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  max-width: 600px;
+  width: 90%;
+  padding: 0; /* Reset padding to handle inner sections */
+  background: var(--bg-card);
+  color: var(--text-main);
+}
+
+/* The dark background behind the modal */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.modal-body {
+  padding: 20px;
+  max-height: 60vh; /* Scroll if list is too long */
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-header);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Checklist Item Styling inside Modal */
+.checklist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.checklist-item:last-child {
+  border-bottom: none;
+}
+.checklist-question {
+  font-weight: 500;
+  flex: 1;
+  padding-right: 15px;
+}
+.checklist-radios {
+  display: flex;
+  gap: 15px;
+}
+
+
+/* --- D. Utility Classes used by JS --- */
+.w-full { width: 100%; }
+.opacity-50 { opacity: 0.5; }
+.cursor-not-allowed { cursor: not-allowed; }
+.text-muted-sm { font-size: 0.8rem; color: var(--text-muted); }

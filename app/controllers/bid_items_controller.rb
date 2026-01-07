@@ -57,7 +57,8 @@ class BidItemsController < ApplicationController
     end
 
     # Only allow a list of trusted parameters through.
-    def bid_item_params
-      params.require(:bid_item).permit(:code, :description, :unit)
-    end
+   def bid_item_params
+  # We permit :questions_text INSTEAD of :checklist_questions
+  params.require(:bid_item).permit(:code, :description, :unit, :questions_text)
+ end
 end
