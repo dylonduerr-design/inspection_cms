@@ -6,14 +6,25 @@ class ReportsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision export_word ]
 
-  # GET /reports
+# GET /reports
   def index
+    # 1. FIX: Set the default to matches your View's default tab
+    params[:status] ||= 'creating'
+
+    # 2. SCOPE: Determine base collection (Security/Workflow logic)
+    # Inspectors should only see their own reports in 'creating' or 'revise' stages.
+    # For all other stages (QC, Authorization), we show the global list.
     @reports = if ['creating', 'revise'].include?(params[:status])
-                 current_user.reports
+                 current_user.reports 
                else
                  Report.all
                end
 
+    # 3. FILTER: Actually apply the status filter
+    # Without this line, 'current_user.reports' would return their 'creating' AND 'qc_review' reports mixed together.
+    @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
+
+    # 4. SEARCH: Apply the remaining filters (Date, Project, Inspector)
     apply_search_filters
 
     respond_to do |format|
@@ -285,52 +296,58 @@ class ReportsController < ApplicationController
     end
 
     def report_params
-      params.require(:report).permit(
-        # --- 1. NEW DATE FIELDS ---
-        :start_date, 
-        :end_date,
-        
-        :dir_number, :project_id, :phase_id, 
-        :status, :result,
-        :shift_start, :shift_end,
-        
-        # --- 2. WEATHER TRIO & OLD FIELDS ---
-        :temp_1, :temp_2, :temp_3,
-        :wind_1, :wind_2, :wind_3,
-        :precip_1, :precip_2, :precip_3,
-        :weather_summary_1, 
-        :weather_summary_2, 
-        :weather_summary_3,
-        :weather, :temperature,
-        
-        :station_start, :station_end, :contractor, :plan_sheet, :relevant_docs,
-        :deficiency_status, :deficiency_desc,
-        
-        # --- 3. NEW & OLD ENUMS ---
-        :traffic_control, :environmental, :security, :safety_incident, 
-        :air_ops_coordination, :swppp_controls,
-        
-        :safety_desc, :commentary,
-        
-        # --- 4. NEW TEXT FIELDS ---
-        :additional_activities, :additional_info,
+  params.require(:report).permit(
+    # --- 1. NEW DATE FIELDS ---
+    :start_date, 
+    :end_date,
+    
+    :dir_number, :project_id, :phase_id, 
+    :status, :result,
+    :shift_start, :shift_end,
+    
+    # --- 2. WEATHER TRIO & OLD FIELDS ---
+    :temp_1, :temp_2, :temp_3,
+    :wind_1, :wind_2, :wind_3,
+    :precip_1, :precip_2, :precip_3,
+    :weather_summary_1, 
+    :weather_summary_2, 
+    :weather_summary_3,
+    :weather, :temperature,
+    
+    :station_start, :station_end, :contractor, :plan_sheet, :relevant_docs,
+    :deficiency_status, :deficiency_desc,
+    
+    # --- 3. NEW & OLD ENUMS ---
+    :traffic_control, :environmental, :security, :safety_incident, 
+    :air_ops_coordination, :swppp_controls,
+    
+    :safety_desc, :commentary,
+    
+    # --- 4. NEW TEXT FIELDS ---
+    :additional_activities, :additional_info,
 
-        :qa_activity, :qa_bid_item_id, :qa_type, :qa_result,
-        :foreman, :laborer_count, :operator_count, :survey_count,
-        
-        attachments: [], 
-        
-        # --- 5. NESTED ATTRIBUTES w/ JSONB ---
-        # Note the { checklist_answers: {} } at the end!
-        inspection_entries_attributes: [
-          :id, :bid_item_id, :quantity, :location, :notes, :_destroy,
-          { checklist_answers: {} } 
-        ],
-        
-        equipment_entries_attributes: [:id, :make_model, :hours, :_destroy],
-        report_attachments_attributes: [:id, :caption, :file, :_destroy]
-      )
-    end
+    :qa_activity, :qa_bid_item_id, :qa_type, :qa_result,
+    
+    # --- UPDATED CREW FIELDS ---
+    :superintendent,    # <-- Added
+    :electrician_count, # <-- Added
+    :foreman, :laborer_count, :operator_count, :survey_count,
+    
+    attachments: [], 
+    
+    # --- 5. NESTED ATTRIBUTES w/ JSONB ---
+    # Note: Removed :location from this list
+    inspection_entries_attributes: [
+      :id, :bid_item_id, :quantity, :notes, :_destroy, 
+      { checklist_answers: {} } 
+    ],
+    
+    # Note: Added :quantity to this list
+    equipment_entries_attributes: [:id, :make_model, :hours, :quantity, :_destroy],
+    
+    report_attachments_attributes: [:id, :caption, :file, :_destroy]
+  )
+end
 
     def generate_csv(reports)
       CSV.generate(headers: true) do |csv|

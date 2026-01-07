@@ -95,7 +95,20 @@
   <div class="form-card">
     <h2>2. Inspection Checklist</h2>
 
-    <% pretty_label = ->(key) { key.to_s.humanize.gsub("Tc ", "").gsub("Env ", "").gsub("Sec ", "").gsub("Air ", "").gsub("Swppp ", "") } %>
+    <% pretty_label = ->(key) { 
+  k = key.to_s
+  # 1. Handle specific Yes/No/NA cases across all categories
+  return "No"  if k.include?("no_deficiency") || k.end_with?("_no") || k == "safety_no"
+  return "Yes" if k.include?("yes_deficiency") || k.end_with?("_yes") || k == "safety_yes"
+  return "N/A" if k.end_with?("_na") || k.end_with?("_na")
+  
+  # 2. Handle specific acronyms
+  return "CDR" if k == "cdr"
+  return "NCR" if k == "ncr"
+
+  # 3. Fallback for anything else (cleans up "Tc", "Env", etc if needed)
+  k.humanize.gsub(/Tc |Env |Sec |Air |Swppp /, "") 
+} %>
 
     <%# Deficiency Section %>
     <div class="form-row">
