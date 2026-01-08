@@ -6,9 +6,9 @@ class ReportsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision export_word ]
 
-# GET /reports
+  # GET /reports
   def index
-    # 1. FIX: Set the default to matches your View's default tab
+    # 1. DEFAULT: Set the default status to match your View's default tab
     params[:status] ||= 'creating'
 
     # 2. SCOPE: Determine base collection (Security/Workflow logic)
@@ -21,7 +21,7 @@ class ReportsController < ApplicationController
                end
 
     # 3. FILTER: Actually apply the status filter
-    # Without this line, 'current_user.reports' would return their 'creating' AND 'qc_review' reports mixed together.
+    # This prevents cross-contamination of statuses (e.g. seeing 'qc' in 'creating' tab)
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
 
     # 4. SEARCH: Apply the remaining filters (Date, Project, Inspector)
@@ -99,160 +99,28 @@ class ReportsController < ApplicationController
 
   # --- EXPORT TO WORD ACTION ---
   def export_word
-    # 1. Load the template
-    template_path = Rails.root.join('app', 'assets', 'documents', 'inspection_template.docx').to_s
-    doc = Docx::Document.open(template_path)
+    # 1. Delegate the work to your Service Class
+    # [cite_start]This uses the logic in word_report_exporter.rb [cite: 24]
+    temp_file = WordReportExporter.generate(@report)
 
-    # 2. Define the Mapping for Single Fields
-    # Helper for safe strings
-    safe_date = @report.start_date&.strftime("%m/%d/%Y")
-    
-    # Logic to combine the weather trios for old templates
-    combined_temp = [@report.temp_1, @report.temp_2, @report.temp_3].compact.join(" / ")
-    combined_wind = [@report.wind_1, @report.wind_2, @report.wind_3].compact.join(" / ")
-    combined_precip = [@report.precip_1, @report.precip_2, @report.precip_3].compact.join(" / ")
-    combined_weather = [@report.weather_summary_1, @report.weather_summary_2, @report.weather_summary_3].compact.join(" / ")
-
-    data_mapping = {
-      '{{DIR_NUM}}'    => @report.dir_number,
-      '{{DATE}}'       => safe_date,
-      '{{END_DATE}}'   => @report.end_date&.strftime("%m/%d/%Y"),
-      '{{PROJECT}}'    => @report.project&.name,
-      '{{PHASE}}'      => @report.phase&.name,
-      '{{INSPECTOR}}'  => @report.user&.email,
-      '{{SHIFT}}'      => "#{@report.shift_start} - #{@report.shift_end}",
-      
-      # Weather Trio Mappings
-      '{{TEMP}}'       => combined_temp,      # Combined into X/Y/Z format
-      '{{TEMP_1}}'     => @report.temp_1,
-      '{{TEMP_2}}'     => @report.temp_2,
-      '{{TEMP_3}}'     => @report.temp_3,
-
-      '{{WIND}}'       => combined_wind,
-      '{{WIND_1}}'     => @report.wind_1,
-      '{{WIND_2}}'     => @report.wind_2,
-      '{{WIND_3}}'     => @report.wind_3,
-
-      '{{PRECIP}}'     => combined_precip,
-      '{{PRECIP_1}}'   => @report.precip_1,
-      '{{PRECIP_2}}'   => @report.precip_2,
-      '{{PRECIP_3}}'   => @report.precip_3,
-
-      '{{WEATHER}}'    => combined_weather,
-      
-      '{{CONTRACTOR}}' => @report.contractor,
-      
-      # Enums
-      '{{TC_STATUS}}'  => humanize_enum(@report.traffic_control),
-      '{{ENV_STATUS}}' => humanize_enum(@report.environmental),
-      '{{SEC_STATUS}}' => humanize_enum(@report.security),
-      '{{SAF_STATUS}}' => humanize_enum(@report.safety_incident),
-      '{{AIR_OPS}}'    => humanize_enum(@report.air_ops_coordination),
-      '{{SWPPP}}'      => humanize_enum(@report.swppp_controls),
-      '{{SAF_DESC}}'   => @report.safety_desc,
-      # Text Blocks
-      '{{COMMENTARY}}'   => @report.commentary,
-      '{{DEFICIENCY}}'   => @report.deficiency_desc,
-      '{{ADD_ACTIVITY}}' => @report.additional_activities,
-      '{{ADD_INFO}}'     => @report.additional_info
-    }
-
-    # 3. Replace text in General Paragraphs & Tables
-    doc.paragraphs.each { |p| replace_tags(p, data_mapping) }
-    doc.tables.each do |table|
-      table.rows.each do |row|
-        row.cells.each do |cell|
-          cell.paragraphs.each { |p| replace_tags(p, data_mapping) }
-        end
-      end
-    end
-    doc.headers.each { |p| replace_tags(p, data_mapping) } if doc.respond_to?(:headers)
-    doc.footers.each { |p| replace_tags(p, data_mapping) } if doc.respond_to?(:footers)
-    # 4. Handle DYNAMIC TABLE: Bid Items
-    bid_table = nil
-    bid_header_row_index = nil
-
-    # Deep Search for the table
-    doc.tables.each do |t|
-      t.rows.each_with_index do |row, index|
-        if row.cells.any? { |c| c.text.include?("Item Code") }
-          bid_table = t
-          bid_header_row_index = index
-          break
-        end
-      end
-      break if bid_table
-    end
-    
-    if bid_table && bid_header_row_index && @report.inspection_entries.any?
-      template_row = bid_table.rows[bid_header_row_index + 1]
-      
-      @report.inspection_entries.each do |entry|
-        new_row = template_row.copy
+    if temp_file
+      begin
+        # 2. Read the binary data from the temp file path
+        file_data = File.binread(temp_file.path)
         
-        # MAPPING
-        new_row.cells[0].paragraphs[0].text = entry.bid_item&.code.to_s
-        new_row.cells[1].paragraphs[0].text = entry.bid_item&.description.to_s
-        qty = entry.quantity.to_s
-        unit = entry.bid_item&.unit.to_s
-        new_row.cells[2].paragraphs[0].text = "#{qty} #{unit}"
-        new_row.cells[3].paragraphs[0].text = entry.notes.to_s
-        
-        # Note: If you want to print the checklist answers into the Word Doc, 
-        # we would need to loop through entry.checklist_answers here.
-        # For now, we leave it as standard columns.
-        
-        new_row.insert_before(template_row)
+        # 3. Send the data to the browser
+        send_data file_data, 
+                  filename: "DIR_#{@report.dir_number}_#{@report.start_date}.docx",
+                  type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  disposition: 'attachment'
+      ensure
+        # 4. Clean up the temp file
+        temp_file.close
+        temp_file.unlink
       end
-      
-      template_row.node.remove
-    end
-
-    # 5. Handle DYNAMIC TABLE: Equipment
-    equip_table = nil
-    equip_header_row_index = nil
-
-    # Deep Search for the table
-    doc.tables.each do |t|
-      t.rows.each_with_index do |row, index|
-        if row.cells.any? { |c| c.text.include?("Make/Model") }
-          equip_table = t
-          equip_header_row_index = index
-          break
-        end
-      end
-      break if equip_table
-    end
-    
-    if equip_table && equip_header_row_index && @report.equipment_entries.any?
-      template_row = equip_table.rows[equip_header_row_index + 1]
-      
-      @report.equipment_entries.each do |entry|
-        new_row = template_row.copy
-        
-        new_row.cells[1].paragraphs[0].text = entry.make_model.to_s
-        new_row.cells[3].paragraphs[0].text = entry.hours.to_s 
-        
-        new_row.insert_before(template_row)
-      end
-      
-      template_row.node.remove
-    end
-
-    # 6. Save and Send
-    temp_file = Tempfile.new(['inspection', '.docx'])
-    
-    begin
-      doc.save(temp_file.path)
-      file_data = File.binread(temp_file.path)
-      
-      send_data file_data, 
-                filename: "DIR_#{@report.dir_number}_#{@report.start_date}.docx",
-                type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                disposition: 'attachment'
-    ensure
-      temp_file.close
-      temp_file.unlink
+    else
+      # Fallback if the template is missing
+      redirect_to @report, alert: "Could not generate report. Template missing."
     end
   end
 
@@ -262,96 +130,25 @@ class ReportsController < ApplicationController
       @report = Report.find(params[:id])
     end
 
-    def replace_tags(paragraph, mapping)
-      mapping.each do |key, value|
-        if paragraph.text.include?(key)
-          # Use gsub to replace all instances
-          paragraph.text = paragraph.text.gsub(key, value.to_s)
-        end
-      end
-    end
-
-    def humanize_enum(val)
-      case val
-      # Standard Yes/No/NA logic
-      when 'tc_yes', 'env_yes', 'sec_yes', 'safety_yes', 'air_yes', 'swppp_yes' then 'Yes'
-      when 'tc_no', 'env_no', 'sec_no', 'safety_no', 'air_no', 'swppp_no'    then 'No'
-      when 'tc_na', 'env_na', 'sec_na', 'safety_na', 'air_na', 'swppp_na'    then 'N/A'
-      else val&.humanize
-      end
-    end
-
     def apply_search_filters
-      @reports = @reports.where(status: params[:status]) if params[:status].present? && params[:status] != 'all'
+      # NOTE: Status filtering is now handled in the index action!
+      # [cite_start]We removed the duplicate check here to fix the syntax error. [cite: 80, 81]
+
       @reports = @reports.filter_by_inspector(params[:inspector]) if params[:inspector].present?
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
       
-      # UPDATED: Use start_date
-      @reports = @reports.filter_by_date_range(params[:start_date], params[:end_date]) if params[:start_date].present?
-      
+      # Date Range Filter
+      if params[:start_date].present?
+        # Ensure we handle the end date if the scope expects a range
+        end_date = params[:end_date].presence || params[:start_date]
+        @reports = @reports.filter_by_date_range(params[:start_date], end_date) 
+      end
+
       if params[:result].present?
         @reports = params[:result] == 'pending' ? @reports.where(result: [nil, '']) : @reports.where(result: params[:result])
       end
     end
-
-    def report_params
-    params.require(:report).permit(
-      # --- 1. GENERAL INFO ---
-      :start_date, :end_date,
-      :dir_number, :project_id, :phase_id, 
-      :status, :result,
-      :shift_start, :shift_end,
-      :contractor, # Main Prime Contractor
-
-      # --- 2. WEATHER & CONDITIONS ---
-      :temp_1, :temp_2, :temp_3,
-      :wind_1, :wind_2, :wind_3,
-      :precip_1, :precip_2, :precip_3,
-      :weather_summary_1, :weather_summary_2, :weather_summary_3,
-      :weather, :temperature,
-      
-      :station_start, :station_end, :plan_sheet, :relevant_docs,
-      
-      # --- 3. COMPLIANCE & SAFETY ---
-      :deficiency_status, :deficiency_desc,
-      :traffic_control, :environmental, :security, :safety_incident, 
-      :air_ops_coordination, :swppp_controls,
-      :safety_desc, :commentary,
-      
-      # --- 4. TEXT AREAS ---
-      :additional_activities, :additional_info,
-      
-      # --- 5. ATTACHMENTS ---
-      attachments: [], 
-      report_attachments_attributes: [:id, :caption, :file, :_destroy],
-
-      # --- 6. NEW NESTED TABLES (The "Big Three") ---
-      
-      # A. CREW (Workforce) - Note: No more flat foreman/superintendent fields!
-      crew_entries_attributes: [
-        :id, :contractor, :superintendent, :foreman, 
-        :survey_count, :operator_count, :laborer_count, :electrician_count, 
-        :notes, :_destroy
-      ],
-
-      # B. EQUIPMENT (Now includes contractor & quantity)
-      equipment_entries_attributes: [
-        :id, :make_model, :hours, :quantity, :contractor, :_destroy
-      ],
-      
-      # New (Fixed): Accepts the JSON String our JS sends
-      inspection_entries_attributes: [
-        :id, :bid_item_id, :quantity, :notes, :_destroy, 
-        :checklist_answers 
-      ],
-      
-      # D. QA ENTRIES (New!)
-      qa_entries_attributes: [
-        :id, :qa_type, :location, :result, :note, :_destroy
-      ]
-    )
-  end
 
     def generate_csv(reports)
       CSV.generate(headers: true) do |csv|
@@ -385,5 +182,54 @@ class ReportsController < ApplicationController
           end
         end
       end
+    end
+
+    def report_params
+      params.require(:report).permit(
+        # --- 1. GENERAL INFO ---
+        :start_date, :end_date,
+        :dir_number, :project_id, :phase_id, 
+        :status, :result,
+        :shift_start, :shift_end,
+        :contractor, 
+
+        # --- 2. WEATHER & CONDITIONS ---
+        :temp_1, :temp_2, :temp_3,
+        :wind_1, :wind_2, :wind_3,
+        :precip_1, :precip_2, :precip_3,
+        :weather_summary_1, :weather_summary_2, :weather_summary_3,
+        :weather, :temperature,
+        :station_start, :station_end, :plan_sheet, :relevant_docs,
+        
+        # --- 3. COMPLIANCE & SAFETY ---
+        :deficiency_status, :deficiency_desc,
+        :traffic_control, :environmental, :security, :safety_incident, 
+        :air_ops_coordination, :swppp_controls,
+        :safety_desc, :commentary,
+
+        # --- 4. TEXT AREAS ---
+        :additional_activities, :additional_info,
+        
+        # --- 5. ATTACHMENTS ---
+        attachments: [], 
+        report_attachments_attributes: [:id, :caption, :file, :_destroy],
+
+        # --- 6. NESTED TABLES ---
+        crew_entries_attributes: [
+          :id, :contractor, :superintendent, :foreman, 
+          :survey_count, :operator_count, :laborer_count, :electrician_count, 
+          :notes, :_destroy
+        ],
+        equipment_entries_attributes: [
+          :id, :make_model, :hours, :quantity, :contractor, :_destroy
+        ],
+        inspection_entries_attributes: [
+          :id, :bid_item_id, :quantity, :notes, :_destroy, 
+          :checklist_answers 
+        ],
+        qa_entries_attributes: [
+          :id, :qa_type, :location, :result, :note, :_destroy
+        ]
+      )
     end
 end
