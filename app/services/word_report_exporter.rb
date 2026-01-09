@@ -6,11 +6,16 @@ class WordReportExporter
     template_path = Rails.root.join('app', 'assets', 'documents', 'inspection_template.docx')
     return nil unless File.exist?(template_path)
 
-    # Convert Pathname to String for the docx gem
-    doc = Docx::Document.open(template_path.to_s)
+    # 2. PREPARE CAPTION MAPPING
+    caption_map = {}
+    (1..6).each do |i|
+      attachment = report.report_attachments[i-1]
+      text = attachment ? (attachment.caption || "") : ""
+      caption_map["{{CAPTION #{i}}}"] = text
+    end
 
-    # 2. DEFINE REPLACEMENTS
-    replacements = {
+    # 3. DEFINE REPLACEMENTS
+    base_replacements = {
       # --- General Info ---
       '{{PROJECT}}' => report.project&.name,
       '{{START_DATE}}' => report.start_date&.strftime("%m/%d/%Y"),
@@ -18,18 +23,17 @@ class WordReportExporter
       '{{END_DATE}}' => report.end_date&.strftime("%m/%d/%Y"),
       '{{END_SHIFT}}' => report.shift_end,
       '{{INSPECTOR}}' => report.user.respond_to?(:full_name) ? report.user.full_name : report.user.email,
-      
-      # --- Weather (Combined) ---
+
+      # --- Weather ---
       '{{TEMP}}' => [report.temp_1, report.temp_2, report.temp_3].compact.join(' / '),
       '{{WEATHER}}' => [report.weather_summary_1, report.weather_summary_2, report.weather_summary_3].compact.join(' / '),
       '{{WIND}}' => [report.wind_1, report.wind_2, report.wind_3].compact.join(' / '),
       '{{PRECIP}}' => [report.precip_1, report.precip_2, report.precip_3].compact.join(' / '),
-      '{{VIS}}' => "N/A",           
-      '{{SURFACE}}' => "N/A", 
+      '{{VIS}}' => "N/A",
+      '{{SURFACE}}' => "N/A",
       '{{WEATHER_EVENT}}' => "N/A",
 
-      # --- Compliance & Safety ---
-      # This calls the helper method defined below!
+      # --- Compliance ---
       '{{SEC_STATUS}}' => human_enum(report.security),
       '{{TC_STATUS}}' => human_enum(report.traffic_control),
       '{{AIR_OPS}}' => human_enum(report.air_ops_coordination),
@@ -37,26 +41,29 @@ class WordReportExporter
       '{{ENV_STATUS}}' => human_enum(report.environmental),
       '{{SAF_STATUS}}' => human_enum(report.safety_incident),
       '{{SAF_DESCRIPTION}}' => report.safety_desc || "None",
-
-      # --- Deficiencies ---
-      '{{DEF_STATUS}}' => human_enum(report.deficiency_status), 
+      '{{DEF_STATUS}}' => human_enum(report.deficiency_status),
       '{{DEF_DESC}}' => report.deficiency_desc || "None",
-      
+
       # --- Commentary ---
       '{{COMMENTARY}}' => report.commentary,
       '{{ADD_ACTIVITY}}' => report.additional_activities,
       '{{ADD_INFO}}' => report.additional_info
     }
 
-    # 3. GLOBAL FIND & REPLACE
+    replacements = base_replacements.merge(caption_map)
+
+    # 4. OPEN DOCUMENT
+    doc = Docx::Document.open(template_path.to_s)
+
+    # 5. GLOBAL FIND & REPLACE
     replace_all(doc, replacements)
 
-    # 4. DYNAMIC TABLE PROCESSING
+    # 6. DYNAMIC TABLE PROCESSING
     doc.tables.each do |table|
       # A. QA TABLE
       if table_has_placeholder?(table, '[TEST]')
         populate_table(table, report.qa_entries, {
-          '[CODE]' => :qa_type, 
+          '[CODE]' => :qa_type,
           '[TEST]' => :qa_type,
           '[LOCATION]' => :location,
           '[RESULT]' => :result,
@@ -97,7 +104,7 @@ class WordReportExporter
       end
     end
 
-    # 5. SAVE
+    # 7. SAVE
     temp_file = Tempfile.new(['report', '.docx'])
     doc.save(temp_file.path)
     temp_file
@@ -105,47 +112,50 @@ class WordReportExporter
 
   private
 
-  # --- HELPER: Enum Formatter ---
-  # Defined here so it is visible to the 'generate' method above
   def self.human_enum(val)
     return "N/A" if val.nil? || val == 0
     val.include?('_') ? val.split('_').last.capitalize : val.humanize
   end
 
-  # --- HELPER: Global Replacement ---
   def self.replace_all(doc, replacements)
-    doc.paragraphs.each do |p|
-      replacements.each { |key, value| p.text = p.text.gsub(key, value.to_s) }
-    end
+    doc.paragraphs.each { |p| replace_in_paragraph(p, replacements) }
+    doc.tables.each { |t| replace_in_table(t, replacements) }
+  end
 
-    doc.tables.each do |table|
-      table.rows.each do |row|
-        row.cells.each do |cell|
-          cell.paragraphs.each do |p|
-            replacements.each { |key, value| p.text = p.text.gsub(key, value.to_s) }
-          end
-        end
+  def self.replace_in_paragraph(p, replacements)
+    replacements.each { |key, value| p.text = p.text.gsub(key, value.to_s) }
+  end
+
+  def self.replace_in_table(table, replacements)
+    table.rows.each do |row|
+      row.cells.each do |cell|
+        cell.paragraphs.each { |p| replace_in_paragraph(p, replacements) }
       end
     end
   end
 
-  # --- HELPER: Table Detection ---
   def self.table_has_placeholder?(table, tag)
     table.rows.any? { |row| row.cells.any? { |cell| clean_text(cell.text).include?(tag) } }
   end
 
-  # --- HELPER: Table Population ---
+  # --- HELPER: Table Population (CORRECTED) ---
   def self.populate_table(table, data_collection, mapping)
+    # 1. Find the template row
     template_row_index = table.rows.find_index do |row|
-      row.cells.any? { |cell| mapping.keys.any? { |k| clean_text(cell.text).include?(k) } } 
+      row.cells.any? { |cell| mapping.keys.any? { |k| clean_text(cell.text).include?(k) } }
     end
     return unless template_row_index
 
     template_row = table.rows[template_row_index]
 
     data_collection.each do |item|
-      new_row = table.send(:insert_row_after, table.rows.size - 1, template_row)
+      # 2. Clone the template row using deeper XML copy
+      new_row = template_row.copy
       
+      # 3. Insert BEFORE the template row
+      template_row.node.add_previous_sibling(new_row.node)
+
+      # 4. Fill in the data
       new_row.cells.each do |cell|
         mapping.each do |placeholder, attribute|
           if clean_text(cell.text).include?(placeholder)
@@ -157,15 +167,22 @@ class WordReportExporter
                   else
                     ""
                   end
-            
+
             regex = /["“”]?#{Regexp.escape(placeholder)}["“”]?/
-            cell.text = cell.text.gsub(regex, val.to_s)
+            
+            # --- FIX IS HERE ---
+            # Instead of cell.text =, we iterate over the paragraphs inside the cell
+            cell.paragraphs.each do |p|
+              p.text = p.text.gsub(regex, val.to_s)
+            end
+            # -------------------
           end
         end
       end
     end
 
-    table.remove_row(template_row_index)
+    # 5. Remove the template row
+    template_row.node.remove
   end
 
   def self.clean_text(text)

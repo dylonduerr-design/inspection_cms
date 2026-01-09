@@ -99,6 +99,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
     t.index ["report_id"], name: "index_equipment_entries_on_report_id"
   end
 
+  create_table "inspection_entries", force: :cascade do |t|
+    t.bigint "report_id", null: false
+    t.bigint "bid_item_id", null: false
+    t.decimal "quantity"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "checklist_answers", default: {}
+    t.index ["bid_item_id"], name: "index_inspection_entries_on_bid_item_id"
+    t.index ["report_id"], name: "index_inspection_entries_on_report_id"
+  end
+
   create_table "phases", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
