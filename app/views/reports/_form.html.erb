@@ -372,6 +372,10 @@
     </button>
   </div>
 
+  <%# --- MAESTRO INSERTION: SPEC CHECK CARD (The Drill-Down) --- %>
+  <%# Make sure you have created 'app/views/reports/_spec_check_card.html.erb' %>
+  <%= render "spec_check_card", report: report %>
+
   <%# --- 6. INSPECTION ENTRIES (Quantities) --- %>
   <div class="form-card">
     <h2>4. Inspection Entries (Bid Items)</h2>
@@ -382,7 +386,7 @@
              <div class="form-group" style="flex: 2;">
                <label class="text-muted-sm">Bid Item</label>
                <%= entry_form.select :bid_item_id, 
-                     BidItem.all.map { |bi| [bi.code + " - " + bi.description, bi.id, { 'data-questions': bi.checklist_questions.to_json }] }, 
+                     BidItem.all.map { |bi| [bi.code + " - " + bi.description, bi.id, { 'data-questions': bi.active_questions.to_json }] }, 
                      { prompt: "Select Item..." }, 
                      { class: "w-full", data: { action: "change->report-form#selectBidItem" } } 
                %>

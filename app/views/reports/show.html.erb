@@ -130,6 +130,41 @@
     </table>
   </div>
 
+<%# --- NEW SECTION: SPECIFICATION CHECKLISTS --- %>
+  <% if @report.checklist_entries.any? %>
+    <div class="report-section">
+      <h3>Specification Compliance Checklists</h3>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <% @report.checklist_entries.each do |entry| %>
+          <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <div style="background: var(--bg-header); padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-weight: bold; display: flex; justify-content: space-between;">
+              <span><%= entry.spec_item.code %></span>
+              <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);"><%= entry.spec_item.description.truncate(30) %></span>
+            </div>
+            
+            <table class="modern-table" style="margin: 0;">
+              <tbody>
+                <% entry.checklist_answers.each do |question, answer| %>
+                  <tr>
+                    <td style="padding: 8px 15px; font-size: 0.85rem; border-bottom: 1px solid #eee;"><%= question %></td>
+                    <td style="padding: 8px 15px; font-size: 0.85rem; font-weight: bold; width: 60px; text-align: center; border-bottom: 1px solid #eee;">
+                      <% if answer == "No" %>
+                        <span style="color: var(--danger);"><%= answer %></span>
+                      <% else %>
+                         <%= answer %>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
   <%# --- 3. QUALITY ASSURANCE --- %>
   <% if @report.qa_entries.any? %>
     <div class="report-section">

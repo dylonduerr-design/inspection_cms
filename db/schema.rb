@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_09_033530) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_09_043514) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -61,6 +61,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_033530) do
     t.datetime "updated_at", null: false
     t.bigint "spec_item_id", null: false
     t.index ["spec_item_id"], name: "index_bid_items_on_spec_item_id"
+  end
+
+  create_table "checklist_entries", force: :cascade do |t|
+    t.bigint "report_id", null: false
+    t.bigint "spec_item_id", null: false
+    t.jsonb "checklist_answers"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_id"], name: "index_checklist_entries_on_report_id"
+    t.index ["spec_item_id"], name: "index_checklist_entries_on_spec_item_id"
   end
 
   create_table "crew_entries", force: :cascade do |t|
@@ -191,6 +201,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_033530) do
     t.jsonb "checklist_questions"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "division"
   end
 
   create_table "users", force: :cascade do |t|
@@ -210,6 +221,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_033530) do
   add_foreign_key "activity_logs", "reports"
   add_foreign_key "activity_logs", "users"
   add_foreign_key "bid_items", "spec_items"
+  add_foreign_key "checklist_entries", "reports"
+  add_foreign_key "checklist_entries", "spec_items"
   add_foreign_key "crew_entries", "reports"
   add_foreign_key "equipment_entries", "reports"
   add_foreign_key "placed_quantities", "bid_items"

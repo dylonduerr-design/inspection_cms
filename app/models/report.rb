@@ -25,6 +25,7 @@ class Report < ApplicationRecord
   # ATTACHMENTS
   has_many :report_attachments, dependent: :destroy
   accepts_nested_attributes_for :report_attachments, allow_destroy: true
+  has_many_attached :attachments
 
   # NESTED ENTRIES (The "Big Four" Tables)
   
@@ -32,26 +33,26 @@ class Report < ApplicationRecord
   has_many :placed_quantities, dependent: :destroy
   accepts_nested_attributes_for :placed_quantities, allow_destroy: true, reject_if: :all_blank
 
-  # B. EQUIPMENT ENTRIES
+  # B. CHECKLIST ENTRIES (New!)
+  has_many :checklist_entries, dependent: :destroy
+
+  # C. EQUIPMENT ENTRIES
   has_many :equipment_entries, dependent: :destroy
   # REJECT IF: Make/Model is blank
   accepts_nested_attributes_for :equipment_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['make_model'].blank? }
 
-  # C. CREW ENTRIES
+  # D. CREW ENTRIES
   has_many :crew_entries, dependent: :destroy
   # REJECT IF: No key crew fields are entered
   accepts_nested_attributes_for :crew_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['foreman'].blank? && att['superintendent'].blank? && att['laborer_count'].blank? }
 
-  # D. QA ENTRIES (Now connected to your new table)
+  # E. QA ENTRIES
   has_many :qa_entries, dependent: :destroy
   accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
-
-  # FILE ATTACHMENTS
-  has_many_attached :attachments
 
   # --- 4. ENUMS ---
   enum status: { creating: 0, qc_review: 1, revise: 2, authorization: 3 }
