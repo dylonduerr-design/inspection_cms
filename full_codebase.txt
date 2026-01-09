@@ -1,4 +1,4 @@
-INSPECTION CMS CODEBASE EXPORT - 2026-01-08 20:52:23 -0800
+INSPECTION CMS CODEBASE EXPORT - 2026-01-09 00:05:45 -0800
 
 
 ================================================================================
@@ -1522,6 +1522,11 @@ export default class extends Controller {
     this.viewFormTarget.style.display = "none";
     this.modalTitleTarget.innerText = "Select Division";
   }
+  
+  showSpecs() {
+    this.viewSpecsTarget.style.display = "block";
+    this.viewFormTarget.style.display = "none";
+  }
 
   selectDivision(event) {
     const divisionName = event.target.dataset.division;
@@ -1548,41 +1553,57 @@ export default class extends Controller {
     this.viewSpecsTarget.style.display = "block";
     this.modalTitleTarget.innerText = divisionName;
   }
-  
-  showSpecs() {
-    this.viewSpecsTarget.style.display = "block";
-    this.viewFormTarget.style.display = "none";
-  }
 
   selectSpec(event) {
     const specId = parseInt(event.target.closest("button").dataset.id);
     this.currentSpec = this.allSpecs.find(s => s.id === specId);
     
-    this.renderChecklistForm(this.currentSpec.checklist_questions);
+    // UPDATED: Pass empty object {} as second argument
+    this.renderChecklistForm(this.currentSpec.checklist_questions, {});
     
     this.viewSpecsTarget.style.display = "none";
     this.viewFormTarget.style.display = "block";
     this.modalTitleTarget.innerText = `Checklist: ${this.currentSpec.code}`;
   }
 
-  // --- FORM RENDERING ---
-  renderChecklistForm(questions) {
-    const container = document.getElementById("checklist-form-placeholder");
+  // NEW: Handle clicking the "Edit" button on an existing card
+  editSpec(event) {
+    const card = event.target.closest(".gallery-card");
+    const specId = parseInt(card.dataset.specId);
+    const savedAnswers = JSON.parse(card.dataset.answers || "{}");
     
-    // NOTE: In a real app, this should probably be a Rails partial fetched via AJAX
-    // But for "Seamless" speed, we can build it here since we have the data.
+    // Find the full spec object from our data store
+    this.currentSpec = this.allSpecs.find(s => s.id === specId);
+    
+    // Open the modal directly to the form, passing the saved answers
+    this.modalTarget.showModal();
+    this.renderChecklistForm(this.currentSpec.checklist_questions, savedAnswers);
+    
+    this.viewDivisionsTarget.style.display = "none";
+    this.viewSpecsTarget.style.display = "none";
+    this.viewFormTarget.style.display = "block";
+    this.modalTitleTarget.innerText = `Edit: ${this.currentSpec.code}`;
+  }
+
+  // --- FORM RENDERING ---
+  // UPDATED: Now accepts 'savedAnswers' argument
+  renderChecklistForm(questions, savedAnswers = {}) {
+    const container = document.getElementById("checklist-form-placeholder");
     
     let html = `<div style="padding: 10px;">`;
     html += `<p style="margin-bottom: 20px;"><strong>${questions.length} items to check:</strong></p>`;
     
-    questions.forEach((q, index) => {
+    questions.forEach((q) => {
+      // Helper to check if this radio should be selected
+      const isChecked = (val) => savedAnswers[q] === val ? "checked" : "";
+
       html += `
         <div class="checklist-item" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
           <p style="margin: 0 0 5px 0;">${q}</p>
           <div style="display: flex; gap: 15px;">
-            <label><input type="radio" name="answers[${q}]" value="Yes"> Yes</label>
-            <label><input type="radio" name="answers[${q}]" value="No"> No</label>
-            <label><input type="radio" name="answers[${q}]" value="N/A"> N/A</label>
+            <label><input type="radio" name="answers[${q}]" value="Yes" ${isChecked("Yes")}> Yes</label>
+            <label><input type="radio" name="answers[${q}]" value="No" ${isChecked("No")}> No</label>
+            <label><input type="radio" name="answers[${q}]" value="N/A" ${isChecked("N/A")}> N/A</label>
           </div>
         </div>
       `;
@@ -1598,8 +1619,6 @@ export default class extends Controller {
     container.innerHTML = html;
   }
   
-  // ... (previous code remains the same) ...
-
   saveChecklist(event) {
     const btn = event.target;
     btn.disabled = true;
@@ -1635,7 +1654,7 @@ export default class extends Controller {
     .then(response => response.json())
     .then(data => {
       if (data.status === "success") {
-        this.addBadgeToUI(data);
+        this.addBadgeToUI(data, answers); // Pass answers to update the UI data attribute
         this.closeModal();
       } else {
         alert("Error saving: " + data.message);
@@ -1650,7 +1669,7 @@ export default class extends Controller {
     });
   }
 
-  addBadgeToUI(data) {
+  addBadgeToUI(data, newAnswers) {
     const list = document.getElementById("active-checklists-list");
     
     // Remove "No checklists" message if it exists
@@ -1660,17 +1679,33 @@ export default class extends Controller {
     // Check if badge already exists (update scenario)
     let card = list.querySelector(`[data-spec-code="${data.spec_code}"]`);
     
-    if (!card) {
+    if (card) {
+      // Update existing card's data-answers
+      card.dataset.answers = JSON.stringify(newAnswers);
+      // Flash effect to show update
+      card.style.backgroundColor = "#ecfdf5";
+      setTimeout(() => card.style.backgroundColor = "", 1000);
+    } else {
       // Create new card HTML
       const html = `
-        <div class="gallery-card" style="padding: 15px; text-align: left;" data-spec-code="${data.spec_code}">
+        <div class="gallery-card" 
+             style="padding: 15px; text-align: left;" 
+             data-spec-code="${data.spec_code}"
+             data-spec-id="${data.id}" 
+             data-answers='${JSON.stringify(newAnswers)}'>
+             
           <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">${data.spec_code}</div>
           <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; height: 40px; overflow: hidden;">${data.spec_desc}</div>
-          <button type="button" class="btn-secondary" style="width: 100%; font-size: 0.8rem;">✓ Saved</button>
+          
+          <button type="button" 
+                  class="btn-secondary" 
+                  style="width: 100%; font-size: 0.8rem;"
+                  data-action="click->spec-drilldown#editSpec">
+             ✎ Edit Checklist
+          </button>
         </div>
       `;
       // Append to the grid
-      // Note: If you want perfect grid layout, ensure 'list' has class 'gallery-grid'
       if (!list.classList.contains("gallery-grid")) list.classList.add("gallery-grid");
       list.insertAdjacentHTML("beforeend", html);
     }
@@ -1937,6 +1972,7 @@ class Report < ApplicationRecord
   # ATTACHMENTS
   has_many :report_attachments, dependent: :destroy
   accepts_nested_attributes_for :report_attachments, allow_destroy: true
+  has_many_attached :attachments
 
   # NESTED ENTRIES (The "Big Four" Tables)
   
@@ -1944,26 +1980,26 @@ class Report < ApplicationRecord
   has_many :placed_quantities, dependent: :destroy
   accepts_nested_attributes_for :placed_quantities, allow_destroy: true, reject_if: :all_blank
 
-  # B. EQUIPMENT ENTRIES
+  # B. CHECKLIST ENTRIES (New!)
+  has_many :checklist_entries, dependent: :destroy
+
+  # C. EQUIPMENT ENTRIES
   has_many :equipment_entries, dependent: :destroy
   # REJECT IF: Make/Model is blank
   accepts_nested_attributes_for :equipment_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['make_model'].blank? }
 
-  # C. CREW ENTRIES
+  # D. CREW ENTRIES
   has_many :crew_entries, dependent: :destroy
   # REJECT IF: No key crew fields are entered
   accepts_nested_attributes_for :crew_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['foreman'].blank? && att['superintendent'].blank? && att['laborer_count'].blank? }
 
-  # D. QA ENTRIES (Now connected to your new table)
+  # E. QA ENTRIES
   has_many :qa_entries, dependent: :destroy
   accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
-
-  # FILE ATTACHMENTS
-  has_many_attached :attachments
 
   # --- 4. ENUMS ---
   enum status: { creating: 0, qc_review: 1, revise: 2, authorization: 3 }
@@ -3555,6 +3591,108 @@ FILE: app/views/reports/_report.html.erb
 
 
 ================================================================================
+FILE: app/views/reports/_spec_check_card.html.erb
+================================================================================
+<%# app/views/reports/_spec_check_card.html.erb %>
+<div class="form-card" data-controller="spec-drilldown">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Specification Checklists</h2>
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->spec-drilldown#openModal">
+      + Add Spec Checklist
+    </button>
+  </div>
+
+  <%# --- 1. ACTIVE CHECKLISTS GRID --- %>
+  <div id="active-checklists-list" class="gallery-grid">
+    <% if report.checklist_entries.any? %>
+      <% report.checklist_entries.each do |entry| %>
+        <%# UPDATED: Added data-spec-id and data-answers attributes %>
+        <div class="gallery-card" 
+             style="padding: 15px; text-align: left;" 
+             data-spec-code="<%= entry.spec_item.code %>"
+             data-spec-id="<%= entry.spec_item.id %>"
+             data-answers="<%= entry.checklist_answers.to_json %>">
+             
+          <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">
+            <%= entry.spec_item.code %>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; height: 40px; overflow: hidden;">
+            <%= entry.spec_item.description %>
+          </div>
+          
+          <%# UPDATED: Changed to an action button %>
+          <button type="button" 
+                  class="btn-secondary" 
+                  style="width: 100%; font-size: 0.8rem;"
+                  data-action="click->spec-drilldown#editSpec">
+            ✎ Edit Checklist
+          </button>
+        </div>
+      <% end %>
+    <% else %>
+      <%# ... (Keep your empty state div here) ... %>
+      <div class="text-muted" style="grid-column: 1 / -1; padding: 20px; text-align: center; border: 2px dashed #e5e7eb; border-radius: 8px;">
+        No specification checklists added yet.
+      </div>
+    <% end %>
+  </div>
+  <%# --- 2. DATA STORE (Passed to Stimulus) --- %>
+  <%# This allows the JS controller to access all specs without making 100 API calls %>
+  <script id="spec-data-store" type="application/json">
+    <%= SpecItem.all.select(:id, :code, :description, :division, :checklist_questions).to_json.html_safe %>
+  </script>
+
+  <%# --- 3. DRILL-DOWN MODAL --- %>
+  <dialog data-spec-drilldown-target="modal" style="width: 100%; max-width: 600px; border: none; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; background: #f9fafb;">
+      <h3 data-spec-drilldown-target="modalTitle" style="margin: 0; font-size: 1.1rem;">Select Division</h3>
+      <button type="button" class="btn-clear" style="border: none; background: none; font-size: 1.2rem; cursor: pointer;" data-action="click->spec-drilldown#closeModal">✕</button>
+    </div>
+
+    <div class="modal-body" style="padding: 20px; height: 60vh; overflow-y: auto;">
+      
+      <%# VIEW A: DIVISIONS LIST %>
+      <%# This iterates over unique Divisions to create the first menu %>
+      <div data-spec-drilldown-target="viewDivisions">
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <% SpecItem.select(:division).distinct.order(:division).each do |s| %>
+             <button type="button" 
+                     style="text-align: left; padding: 15px; background: white; border: 1px solid #eee; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between;"
+                     onmouseover="this.style.borderColor='#2563eb'; this.style.background='#eff6ff';"
+                     onmouseout="this.style.borderColor='#eee'; this.style.background='white';"
+                     data-action="click->spec-drilldown#selectDivision"
+                     data-division="<%= s.division %>">
+               <strong><%= s.division %></strong>
+               <span>›</span>
+             </button>
+          <% end %>
+        </div>
+      </div>
+
+      <%# VIEW B: SPEC LIST (Populated by JS) %>
+      <div data-spec-drilldown-target="viewSpecs" style="display: none;">
+         <button type="button" class="btn-clear" style="margin-bottom: 15px;" data-action="click->spec-drilldown#showDivisions">← Back to Divisions</button>
+         <div data-spec-drilldown-target="specListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+           <%# JavaScript injects buttons here %>
+         </div>
+      </div>
+
+      <%# VIEW C: CHECKLIST FORM (Populated by JS) %>
+      <div data-spec-drilldown-target="viewForm" style="display: none;">
+         <button type="button" class="btn-clear" style="margin-bottom: 15px;" data-action="click->spec-drilldown#showSpecs">← Back to Specs</button>
+         <div id="checklist-form-placeholder">
+           <%# JavaScript injects the radio buttons here %>
+         </div>
+      </div>
+
+    </div>
+  </dialog>
+</div>
+
+================================================================================
 FILE: app/views/reports/edit.html.erb
 ================================================================================
 <h1>Editing report</h1>
@@ -3852,6 +3990,41 @@ FILE: app/views/reports/show.html.erb
       </tbody>
     </table>
   </div>
+
+<%# --- NEW SECTION: SPECIFICATION CHECKLISTS --- %>
+  <% if @report.checklist_entries.any? %>
+    <div class="report-section">
+      <h3>Specification Compliance Checklists</h3>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <% @report.checklist_entries.each do |entry| %>
+          <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <div style="background: var(--bg-header); padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-weight: bold; display: flex; justify-content: space-between;">
+              <span><%= entry.spec_item.code %></span>
+              <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);"><%= entry.spec_item.description.truncate(30) %></span>
+            </div>
+            
+            <table class="modern-table" style="margin: 0;">
+              <tbody>
+                <% entry.checklist_answers.each do |question, answer| %>
+                  <tr>
+                    <td style="padding: 8px 15px; font-size: 0.85rem; border-bottom: 1px solid #eee;"><%= question %></td>
+                    <td style="padding: 8px 15px; font-size: 0.85rem; font-weight: bold; width: 60px; text-align: center; border-bottom: 1px solid #eee;">
+                      <% if answer == "No" %>
+                        <span style="color: var(--danger);"><%= answer %></span>
+                      <% else %>
+                         <%= answer %>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <%# --- 3. QUALITY ASSURANCE --- %>
   <% if @report.qa_entries.any? %>
@@ -5095,11 +5268,16 @@ plugin :tmp_restart
 ================================================================================
 FILE: config/routes.rb
 ================================================================================
+# config/routes.rb
 Rails.application.routes.draw do
   devise_for :users
   
-  # This creates the standard routes AND our new workflow buttons
   resources :reports do
+    # --- MOVED HERE ---
+    # This creates the URL: /reports/:report_id/checklist_entries
+    resources :checklist_entries, only: [:create, :update] 
+    # ------------------
+
     member do
       post :submit_for_qc
       post :approve
@@ -5111,9 +5289,9 @@ Rails.application.routes.draw do
   resources :bid_items
   resources :phases
   resources :projects
-  resources :checklist_entries, only: [:create, :update]
   
-  # Set the homepage to the search screen
+  # (Removed the old standalone checklist_entries line from down here)
+  
   root "reports#index"
 end
 

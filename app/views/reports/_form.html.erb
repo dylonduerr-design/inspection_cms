@@ -465,16 +465,17 @@
     </div>
   </div>
 
- <%# --- 8. PHOTOS & ATTACHMENTS --- %>
+  <%# --- 8. PHOTOS & ATTACHMENTS (UPDATED) --- %>
   <div class="form-card">
     <h2>6. Photos & Attachments</h2>
 
-    <div class="gallery-grid">
+    <div id="attachments-container" class="gallery-grid">
       <%= form.fields_for :report_attachments do |attachment_form| %>
-        <div class="gallery-card">
+        <div class="gallery-card nested-fields">
           <div class="thumbnail-area">
             <% if attachment_form.object.file.attached? %>
               <% if attachment_form.object.file.representable? %>
+                <%# MAESTRO: image_processing gem now handles this resize %>
                 <%= image_tag attachment_form.object.file.representation(resize_to_limit: [400, 400]) %>
               <% else %>
                 <span class="doc-icon">📄</span>
@@ -491,11 +492,15 @@
       <% end %>
     </div>
 
-    <div class="conditional-field" style="margin-top: 20px;">
-      <label style="font-weight: bold; display: block; margin-bottom: 10px;">+ Upload New Photos/Documents</label>
-      <%= file_field_tag "report[report_attachments_attributes][][file]", multiple: true, class: "form-group input" %>
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;"><i>Select multiple files. You can add captions after clicking "Save".</i></p>
-    </div>
+    <%# MAESTRO: Replaced 'file_field_tag' with Stimulus action to add captioned rows %>
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->report-form#addAssociation"
+            data-template-id="attachment-template"
+            data-container-id="attachments-container"
+            style="margin-top: 20px;">
+      + Add Photo/Document
+    </button>
   </div>
 
   <div class="actions" style="margin-top: 2rem; text-align: right;">
@@ -619,6 +624,22 @@
     </div>
     <div class="form-group">
       <input type="text" placeholder="Daily notes..." name="report[placed_quantities_attributes][NEW_RECORD][notes]" class="w-full">
+    </div>
+  </div>
+</template>
+
+<%# MAESTRO: New Template for Attachments %>
+<template id="attachment-template">
+  <div class="gallery-card nested-fields" style="text-align: left;">
+    <div style="padding: 10px; background: #f9fafb; border-bottom: 1px solid #eee;">
+      <%# This inputs a single file per 'card' %>
+      <input type="file" name="report[report_attachments_attributes][NEW_RECORD][file]" class="form-control" style="width: 100%;">
+    </div>
+    <div style="padding: 10px;">
+      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Enter caption..." class="form-control" style="width: 100%;">
+      <div style="margin-top: 5px; text-align: right;">
+         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; font-size: 0.8rem;">Remove</button>
+      </div>
     </div>
   </div>
 </template>

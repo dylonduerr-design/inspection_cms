@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_09_043514) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -146,8 +146,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_043514) do
     t.string "dir_number"
     t.date "start_date"
     t.date "end_date"
-    t.bigint "project_id", null: false
-    t.bigint "phase_id", null: false
+    t.bigint "project_id"
+    t.bigint "phase_id"
     t.bigint "user_id", null: false
     t.integer "status"
     t.integer "result"

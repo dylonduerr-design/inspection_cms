@@ -21,7 +21,6 @@ class ReportsController < ApplicationController
                end
 
     # 3. FILTER: Actually apply the status filter
-    # This prevents cross-contamination of statuses (e.g. seeing 'qc' in 'creating' tab)
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
 
     # 4. SEARCH: Apply the remaining filters (Date, Project, Inspector)
@@ -39,11 +38,20 @@ class ReportsController < ApplicationController
 
   # GET /reports/new
   def new
-    @report = Report.new
-    # Build 3 entries by default
-    3.times { @report.placed_quantities.build }
-    # Build 1 equipment entry by default
-    1.times { @report.equipment_entries.build }
+    # --- MAESTRO: DRAFT PATTERN IMPLEMENTATION ---
+    # 1. Create the "Shell" Record immediately
+    # We bypass validations (validate: false) so we can get an ID right away.
+    # This allows checklists and attachments to function immediately.
+    @report = current_user.reports.build(status: :creating)
+    
+    if @report.save(validate: false)
+      # 2. Redirect straight to the Edit form
+      # The user won't know the difference, but technically they are editing an existing record.
+      redirect_to edit_report_path(@report)
+    else
+      # Fallback in unlikely event save fails (e.g. database down)
+      redirect_to reports_path, alert: "Could not initialize new report."
+    end
   end
 
   # GET /reports/1/edit
@@ -53,6 +61,8 @@ class ReportsController < ApplicationController
   end
 
   # POST /reports
+  # Note: With Draft Pattern, this action is rarely hit (since 'new' redirects to 'edit' -> 'update'),
+  # but we keep it for fallback or API usage.
   def create
     @report = current_user.reports.build(report_params)
     @report.status ||= :creating
@@ -100,7 +110,6 @@ class ReportsController < ApplicationController
   # --- EXPORT TO WORD ACTION ---
   def export_word
     # 1. Delegate the work to your Service Class
-    # [cite_start]This uses the logic in word_report_exporter.rb [cite: 24]
     temp_file = WordReportExporter.generate(@report)
 
     if temp_file
@@ -132,12 +141,18 @@ class ReportsController < ApplicationController
 
     def apply_search_filters
       # NOTE: Status filtering is now handled in the index action!
-      # [cite_start]We removed the duplicate check here to fix the syntax error. [cite: 80, 81]
 
       @reports = @reports.filter_by_inspector(params[:inspector]) if params[:inspector].present?
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
-      
+
+      # Updated Precip Filter
+      # We assume the user wants to find records with "At least X amount of rain"
+      if params[:precip_min].present?
+         max = params[:precip_max].presence || 100 # Default max if user leaves it blank
+         @reports = @reports.filter_by_precip_range(params[:precip_min], max)
+      end
+
       # Date Range Filter
       if params[:start_date].present?
         # Ensure we handle the end date if the scope expects a range
@@ -211,7 +226,6 @@ class ReportsController < ApplicationController
         :additional_activities, :additional_info,
         
         # --- 5. ATTACHMENTS ---
-        attachments: [], 
         report_attachments_attributes: [:id, :caption, :file, :_destroy],
 
         # --- 6. NESTED TABLES ---
@@ -227,6 +241,9 @@ class ReportsController < ApplicationController
           :id, :bid_item_id, :quantity, :notes, :_destroy, 
           :checklist_answers 
         ],
+        # MAESTRO: Added to support nested checklists if needed in future
+        checklist_entries_attributes: [:id, :spec_item_id, :_destroy, checklist_answers: {}],
+
         qa_entries_attributes: [
           :id, :qa_type, :location, :result, :note, :_destroy
         ]
