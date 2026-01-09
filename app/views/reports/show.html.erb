@@ -350,7 +350,7 @@
               <% if attach.file.attached? %>
                 <% if attach.file.representable? %>
                   <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank" do %>
-                    <%= image_tag attach.file.representation(resize_to_limit: [300, 300]) %>
+                    <%= image_tag attach.file.representation(resize_to_limit: [600, 600]) %>
                   <% end %>
                 <% else %>
                   <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank", style: "text-decoration: none;" do %>

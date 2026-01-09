@@ -326,14 +326,14 @@ body {
 .revision-input { flex: 1; border-color: var(--qc-border); background: rgba(255,255,255,0.5); }
 
 /* Attachments Grid */
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 .gallery-card {
   border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card);
   overflow: hidden; text-align: center; padding-bottom: 12px; transition: all 0.2s ease;
 }
 .gallery-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-float); }
 .thumbnail-area {
-  height: 160px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center;
+  height: 300px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center;
   border-bottom: 1px solid var(--border-color); margin-bottom: 10px; overflow: hidden;
 }
 .thumbnail-area img { width: 100%; height: 100%; object-fit: cover; }
