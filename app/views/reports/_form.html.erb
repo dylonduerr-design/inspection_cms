@@ -1,3 +1,4 @@
+<%# app/views/reports/_form.html.erb %>
 <%# CONNECTING STIMULUS CONTROLLER %>
 <%= form_with(model: report, id: "report-form", multipart: true, data: { controller: "report-form" }) do |form| %>
   
@@ -31,7 +32,7 @@
     <div class="form-row">
       <div class="form-group">
         <label>Contractor (Prime)</label>
-        <%# Added ID 'main-contractor-input' so JS can find it for auto-populating %>
+        <%# ID used for auto-populating child rows %>
         <%= form.text_field :contractor, id: "main-contractor-input" %>
       </div>
       <div class="form-group">
@@ -61,40 +62,49 @@
     
     <div class="weather-grid">
       <%# --- COLUMN 1: START --- %>
-      <div class="weather-col" style="position: relative;">
+      <div class="weather-col">
         <label>Start of Shift</label>
         <%= form.number_field :temp_1, placeholder: "Temp (°F)", class: "mb-2" %>
         <%= form.text_field :weather_summary_1, placeholder: "Cond. (e.g. Sunny)", class: "mb-2" %>
         <%= form.text_field :wind_1, placeholder: "Wind (e.g. 5mph N)", class: "mb-2" %>
         <%= form.text_field :precip_1, placeholder: "Precipitation" %>
         
-        <button type="button" class="btn-secondary weather-fetch-btn" data-suffix="1" style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
+        <button type="button" class="btn-secondary weather-fetch-btn" 
+                data-action="click->report-form#fetchWeather" 
+                data-suffix="1" 
+                style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
           📍 Get Current Weather
         </button>
       </div>
 
       <%# --- COLUMN 2: MIDDLE --- %>
-      <div class="weather-col" style="position: relative;">
+      <div class="weather-col">
         <label>Mid Shift</label>
         <%= form.number_field :temp_2, placeholder: "Temp (°F)", class: "mb-2" %>
         <%= form.text_field :weather_summary_2, placeholder: "Cond. (e.g. Cloudy)", class: "mb-2" %>
         <%= form.text_field :wind_2, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_2, placeholder: "Precipitation" %>
 
-        <button type="button" class="btn-secondary weather-fetch-btn" data-suffix="2" style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
+        <button type="button" class="btn-secondary weather-fetch-btn" 
+                data-action="click->report-form#fetchWeather" 
+                data-suffix="2" 
+                style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
           📍 Get Current Weather
         </button>
       </div>
 
       <%# --- COLUMN 3: END --- %>
-      <div class="weather-col" style="position: relative;">
+      <div class="weather-col">
         <label>End of Shift</label>
         <%= form.number_field :temp_3, placeholder: "Temp (°F)", class: "mb-2" %>
         <%= form.text_field :weather_summary_3, placeholder: "Cond. (e.g. Rain)", class: "mb-2" %>
         <%= form.text_field :wind_3, placeholder: "Wind", class: "mb-2" %>
         <%= form.text_field :precip_3, placeholder: "Precipitation" %>
 
-        <button type="button" class="btn-secondary weather-fetch-btn" data-suffix="3" style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
+        <button type="button" class="btn-secondary weather-fetch-btn" 
+                data-action="click->report-form#fetchWeather" 
+                data-suffix="3" 
+                style="margin-top: 10px; width: 100%; font-size: 0.8rem;">
           📍 Get Current Weather
         </button>
       </div>
@@ -121,7 +131,12 @@
         <div class="radio-group">
           <% Report.deficiency_statuses.keys.each do |k| %>
             <label class="radio-label">
-              <%= form.radio_button :deficiency_status, k, class: "deficiency-trigger" %> 
+              <%= form.radio_button :deficiency_status, k, 
+                  data: { 
+                    action: "change->report-form#toggleSection", 
+                    target_id: "deficiency-note",
+                    valid_values: ['yes_deficiency', 'cdr', 'ncr'].to_json 
+                  } %> 
               <span><%= pretty_label.call(k) %></span>
             </label>
           <% end %>
@@ -139,7 +154,12 @@
         <div class="radio-group">
           <% Report.safety_incidents.keys.each do |k| %>
             <label class="radio-label">
-              <%= form.radio_button :safety_incident, k, class: "safety-trigger" %> 
+              <%= form.radio_button :safety_incident, k, 
+                  data: { 
+                    action: "change->report-form#toggleSection", 
+                    target_id: "safety-note",
+                    valid_values: ['safety_yes'].to_json
+                  } %> 
               <span><%= pretty_label.call(k) %></span>
             </label>
           <% end %>
@@ -204,10 +224,9 @@
   <div class="form-card">
     <h2>Quality Assurance & Control</h2>
     
-    <%# MAESTRO FIX: Switched from Table to Divs to match the JS Template %>
     <div id="qa-entries-container">
       <%= form.fields_for :qa_entries do |qa_form| %>
-        <div class="qa-row nested-fields" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+        <div class="nested-row-container nested-fields">
           <div style="flex: 2;">
             <%= qa_form.select :qa_type, 
                 QaEntry.qa_types.keys.map { |k| [k.humanize.titleize, k] }, 
@@ -228,14 +247,23 @@
           </div>
           <div style="text-align: center;">
             <% if qa_form.object&.persisted? %>
-              <label style="color:red; cursor:pointer;">Del <%= qa_form.check_box :_destroy %></label>
+               <div style="display:none;"><%= qa_form.check_box :_destroy %></div>
+               <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation">✕ Delete</button>
+            <% else %>
+               <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation">✕</button>
             <% end %>
           </div>
         </div>
       <% end %>
     </div>
     
-    <button type="button" id="add-qa-btn" class="btn-secondary">+ Add QA Test</button>
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->report-form#addAssociation"
+            data-template-id="qa-template"
+            data-container-id="qa-entries-container">
+      + Add QA Test
+    </button>
   </div>
 
   <%# --- 5. WORKFORCE & EQUIPMENT --- %>
@@ -280,16 +308,23 @@
              </div>
              <div class="form-group" style="display:flex; align-items:flex-end;">
                <% if crew_form.object&.persisted? %>
-                 <label style="color: red; cursor: pointer;">
-                   Delete <%= crew_form.check_box :_destroy %>
-                 </label>
+                 <div style="display:none;"><%= crew_form.check_box :_destroy %></div>
+                 <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red;">Delete</button>
                <% end %>
              </div>
           </div>
         </div>
       <% end %>
     </div>
-    <button type="button" id="add-crew-btn" class="btn-secondary" onclick="autoPopulate('crew')">+ Add Workforce Row</button>
+    
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->report-form#addAssociation"
+            data-template-id="crew-template"
+            data-container-id="crew-fields-container"
+            data-populate-contractor="true">
+      + Add Workforce Row
+    </button>
 
     <hr style="margin: 20px 0;">
 
@@ -318,23 +353,30 @@
             
             <div class="form-group" style="display: flex; align-items: flex-end;">
               <% if eq_form.object&.persisted? %>
-                <label style="color: red; cursor: pointer; margin-bottom: 10px;">
-                  Del <%= eq_form.check_box :_destroy %>
-                </label>
+                <div style="display:none;"><%= eq_form.check_box :_destroy %></div>
+                <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; margin-bottom: 10px;">Delete</button>
               <% end %>
             </div>
           </div>
         </div>
       <% end %>
     </div>
-    <button type="button" id="add-equipment-btn" class="btn-secondary" onclick="autoPopulate('equipment')">+ Add Equipment</button>
+    
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->report-form#addAssociation"
+            data-template-id="equipment-template"
+            data-container-id="equipment-fields-container"
+            data-populate-contractor="true">
+      + Add Equipment
+    </button>
   </div>
 
-  <%# --- 6. INSPECTION ENTRIES --- %>
+  <%# --- 6. INSPECTION ENTRIES (Quantities) --- %>
   <div class="form-card">
     <h2>4. Inspection Entries (Bid Items)</h2>
     <div id="quantity-fields-container">
-      <%= form.fields_for :inspection_entries do |entry_form| %>
+      <%= form.fields_for :placed_quantities do |entry_form| %>
         <div class="nested-entry-card nested-fields">
            <div class="form-row" style="margin-bottom: 10px;">
              <div class="form-group" style="flex: 2;">
@@ -351,7 +393,7 @@
              </div>
            </div>
 
-           <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+           <div class="nested-row-container" style="margin-bottom: 10px;">
              <%= entry_form.hidden_field :checklist_answers, 
                   class: "checklist-answers-field", 
                   value: (entry_form.object.checklist_answers || {}).to_json %>
@@ -362,7 +404,8 @@
              </button>
              
              <% if entry_form.object&.persisted? %>
-               <label style="margin-left: auto;">Delete <%= entry_form.check_box :_destroy %></label>
+               <div style="display:none;"><%= entry_form.check_box :_destroy %></div>
+               <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="margin-left: auto;">Delete</button>
              <% end %>
            </div>
 
@@ -372,7 +415,14 @@
         </div>
       <% end %>
     </div>
-    <button type="button" id="add-quantity-btn" class="btn-secondary">+ Add Quantity</button>
+    
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->report-form#addAssociation"
+            data-template-id="placed-quantity-template"
+            data-container-id="quantity-fields-container">
+      + Add Quantity
+    </button>
   </div>
 
   <%# --- 7. ADDITIONAL INFORMATION --- %>
@@ -382,7 +432,7 @@
     <div style="margin-bottom: 15px;">
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
         <%= check_box_tag "toggle_activities", "1", report.additional_activities.present?, 
-            data: { action: "change->report-form#toggleAdditional", target_id: "box-activities" } %>
+            data: { action: "change->report-form#toggleSection", target_id: "box-activities" } %>
         <label for="toggle_activities" style="font-weight: bold; cursor: pointer;">Include "Additional Activities" section?</label>
       </div>
       <div id="box-activities" style="<%= report.additional_activities.present? ? '' : 'display:none;' %>">
@@ -393,7 +443,7 @@
     <div>
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
         <%= check_box_tag "toggle_info", "1", report.additional_info.present?, 
-            data: { action: "change->report-form#toggleAdditional", target_id: "box-info" } %>
+            data: { action: "change->report-form#toggleSection", target_id: "box-info" } %>
         <label for="toggle_info" style="font-weight: bold; cursor: pointer;">Include "Additional Information" section?</label>
       </div>
       <div id="box-info" style="<%= report.additional_info.present? ? '' : 'display:none;' %>">
@@ -460,10 +510,10 @@
 
 <% end %>
 
-<%# --- TEMPLATES --- %>
+<%# --- TEMPLATES (Managed by Stimulus) --- %>
+
 <template id="qa-template">
-  <div class="qa-row nested-fields" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
-    
+  <div class="nested-row-container nested-fields">
     <div style="flex: 2;">
       <select class="form-control" name="report[qa_entries_attributes][NEW_RECORD][qa_type]">
         <option value="">Select Test...</option>
@@ -472,11 +522,9 @@
         <% end %>
       </select>
     </div>
-
     <div style="flex: 2;">
       <input class="form-control" placeholder="Location" type="text" name="report[qa_entries_attributes][NEW_RECORD][location]">
     </div>
-
     <div style="flex: 1;">
       <select class="form-control" name="report[qa_entries_attributes][NEW_RECORD][result]">
         <% QaEntry.results.keys.each do |k| %>
@@ -484,12 +532,12 @@
         <% end %>
       </select>
     </div>
-
     <div style="flex: 2;">
       <input class="form-control" placeholder="Remarks" type="text" name="report[qa_entries_attributes][NEW_RECORD][remarks]">
     </div>
-
-    <button type="button" class="remove-row-btn" style="color: red; border: none; background: none; cursor: pointer;">✕</button>
+    <div class="nested-row-container">
+       <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation">✕</button>
+    </div>
   </div>
 </template>
 
@@ -509,7 +557,7 @@
        <div class="form-group"><label>Laborers</label><input type="number" name="report[crew_entries_attributes][NEW_RECORD][laborer_count]"></div>
        <div class="form-group"><label>Electricians</label><input type="number" name="report[crew_entries_attributes][NEW_RECORD][electrician_count]"></div>
        <div class="form-group" style="display:flex; align-items:flex-end;">
-         <button type="button" class="remove-row-btn" style="color: red;">Delete</button>
+         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red;">Delete</button>
        </div>
     </div>
   </div>
@@ -535,21 +583,21 @@
         <input style="width: 100%;" placeholder="Hrs" step="0.5" type="number" name="report[equipment_entries_attributes][NEW_RECORD][hours]">
       </div>
       <div class="form-group" style="display: flex; align-items: flex-end;">
-        <button type="button" class="remove-row-btn" style="color: red; margin-bottom: 5px;">Delete</button>
+        <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; margin-bottom: 5px;">Delete</button>
       </div>
     </div>
   </div>
 </template>
 
-<template id="quantity-template">
+<template id="placed-quantity-template">
   <div class="nested-entry-card nested-fields">
     <div class="form-row" style="margin-bottom: 10px;">
       <div class="form-group" style="flex: 2;">
         <label class="text-muted-sm">Bid Item</label>
-        <select name="report[inspection_entries_attributes][NEW_RECORD][bid_item_id]" class="w-full" data-action="change->report-form#selectBidItem">
+        <select name="report[placed_quantities_attributes][NEW_RECORD][bid_item_id]" class="w-full" data-action="change->report-form#selectBidItem">
             <option value="">Select Item</option>
             <% BidItem.all.each do |bi| %>
-              <option value="<%= bi.id %>" data-questions="<%= bi.checklist_questions.to_json %>">
+              <option value="<%= bi.id %>" data-questions="<%= bi.active_questions.to_json %>">
                 <%= bi.code %> - <%= bi.description %>
               </option>
             <% end %>
@@ -557,226 +605,16 @@
       </div>
       <div class="form-group">
         <label class="text-muted-sm">Quantity</label>
-        <input class="w-full" type="number" step="0.01" placeholder="Qty" name="report[inspection_entries_attributes][NEW_RECORD][quantity]">
+        <input class="w-full" type="number" step="0.01" placeholder="Qty" name="report[placed_quantities_attributes][NEW_RECORD][quantity]">
       </div>
     </div>
-    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-      <input type="hidden" name="report[inspection_entries_attributes][NEW_RECORD][checklist_answers]" class="checklist-answers-field" value="{}">
+    <div class="nested-row-container" style="margin-bottom: 10px;">
+      <input type="hidden" name="report[placed_quantities_attributes][NEW_RECORD][checklist_answers]" class="checklist-answers-field" value="{}">
       <button type="button" class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" data-action="click->report-form#openChecklist">Open Checklist</button>
-      <button type="button" class="remove-row-btn" style="color: red; margin-left: auto;">Delete</button>
+      <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="margin-left: auto;">Delete</button>
     </div>
     <div class="form-group">
-      <input type="text" placeholder="Daily notes..." name="report[inspection_entries_attributes][NEW_RECORD][notes]" class="w-full">
+      <input type="text" placeholder="Daily notes..." name="report[placed_quantities_attributes][NEW_RECORD][notes]" class="w-full">
     </div>
   </div>
 </template>
-
-<script>
-document.addEventListener("turbo:load", function() {
-
-  // =========================================================
-  // 1. TOGGLE LOGIC (Checkbox/Radio visibility)
-  // =========================================================
-  function toggleSection(triggerSelector, targetId, validValues = []) {
-    document.querySelectorAll(triggerSelector).forEach(input => {
-      input.addEventListener('change', () => checkToggle(triggerSelector, targetId, validValues));
-    });
-    checkToggle(triggerSelector, targetId, validValues);
-  }
-
-  function checkToggle(triggerSelector, targetId, validValues) {
-    const target = document.getElementById(targetId);
-    if(!target) return;
-
-    const checkbox = document.querySelector(triggerSelector + '[type="checkbox"]');
-    if(checkbox) {
-      target.style.display = checkbox.checked ? 'block' : 'none';
-      return;
-    }
-
-    const checked = document.querySelector(triggerSelector + ':checked');
-    if (checked && validValues.includes(checked.value)) {
-      target.style.display = 'block';
-    } else {
-      target.style.display = 'none';
-    }
-  }
-
-  // --- ACTIVATE TOGGLES ---
-  toggleSection('.deficiency-trigger', 'deficiency-note', ['yes_deficiency', 'cdr', 'ncr']);
-  toggleSection('.safety-trigger', 'safety-note', ['safety_yes']);
-  toggleSection('#toggle_activities', 'box-activities');
-  toggleSection('#toggle_info', 'box-info');
-
-
-  // =========================================================
-  // 2. DYNAMIC ROW ADDER (Crew, Equipment, etc)
-  // =========================================================
-  function setupAdder(btnId, containerId, templateId) {
-    const btn = document.getElementById(btnId);
-    if(!btn) return;
-
-    // Clone button to remove old listeners (prevents duplicates)
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-
-    newBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const template = document.getElementById(templateId);
-      const container = document.getElementById(containerId);
-      const clone = template.content.cloneNode(true);
-      const uniqueId = new Date().getTime();
-
-      clone.querySelectorAll('input, select').forEach(el => {
-        el.name = el.name.replace('NEW_RECORD', uniqueId);
-      });
-
-      clone.querySelector('.remove-row-btn')?.addEventListener('click', (e) => {
-        e.target.closest('.nested-fields, .equipment-row, tr').remove();
-      });
-
-      container.appendChild(clone);
-      
-      // Auto-populate trigger
-      if(btnId === 'add-crew-btn') autoPopulate('crew');
-      if(btnId === 'add-equipment-btn') autoPopulate('equipment');
-    });
-  }
-
-  setupAdder('add-equipment-btn', 'equipment-fields-container', 'equipment-template');
-  setupAdder('add-quantity-btn', 'quantity-fields-container', 'quantity-template');
-  
-  // MAESTRO FIX: Unified the call for QA entries to the correct ID
-  setupAdder('add-qa-btn', 'qa-entries-container', 'qa-template');
-  setupAdder('add-crew-btn', 'crew-fields-container', 'crew-template');
-
-
-  // =========================================================
-  // 3. AUTO-POPULATE LOGIC (Contractor Name)
-  // =========================================================
-  window.autoPopulate = function(type) {
-    setTimeout(() => {
-      const mainContractor = document.getElementById("main-contractor-input")?.value || "";
-      const container = document.getElementById(type + "-fields-container");
-      
-      // Safety check if container exists
-      if (!container) return;
-
-      const allInputs = container.querySelectorAll(".auto-contractor");
-      const lastInput = allInputs[allInputs.length - 1];
-
-      if(lastInput && mainContractor && lastInput.value === "") {
-        lastInput.value = mainContractor;
-      }
-    }, 50);
-  };
-
-
-  // =========================================================
-  // 4. WEATHER AUTOMATION (Open-Meteo)
-  // =========================================================
-  let activeWeatherSuffix = null;
-
-  // Debugging check:
-  const weatherBtns = document.querySelectorAll('.weather-fetch-btn');
-  // if(weatherBtns.length === 0) console.warn("Maestro Warning: No weather buttons found. Check HTML.");
-
-  weatherBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      
-      // 1. Identify Column
-      activeWeatherSuffix = btn.dataset.suffix;
-      const originalText = btn.innerText;
-
-      if (!navigator.geolocation) {
-        alert("Geolocation not supported by this browser.");
-        return;
-      }
-
-      // 2. Loading State
-      btn.innerText = "Locating...";
-      btn.disabled = true;
-
-      // 3. Fetch Location
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fetchWeatherData(position, btn, originalText);
-        }, 
-        (error) => {
-          console.error(error);
-          alert("Unable to retrieve location. Ensure you are on localhost or HTTPS.");
-          btn.innerText = originalText;
-          btn.disabled = false;
-        }
-      );
-    });
-  });
-
-  function fetchWeatherData(position, btn, originalText) {
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
-    btn.innerText = "Fetching...";
-
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch`;
-
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        const current = data.current;
-        const s = activeWeatherSuffix; 
-
-        // 1. Target Fields
-        const tempField = document.querySelector(`[name="report[temp_${s}]"]`);
-        const windField = document.querySelector(`[name="report[wind_${s}]"]`);
-        const precipField = document.querySelector(`[name="report[precip_${s}]"]`);
-        const condField = document.querySelector(`[name="report[weather_summary_${s}]"]`);
-
-        // 2. Populate
-        if(tempField) tempField.value = Math.round(current.temperature_2m);
-        
-        if(windField) {
-          const windDir = getCardinalDirection(current.wind_direction_10m);
-          windField.value = `${Math.round(current.wind_speed_10m)} mph ${windDir}`;
-        }
-
-        if(precipField) precipField.value = current.precipitation;
-        
-        if(condField) condField.value = decodeWeatherCode(current.weather_code);
-
-        // 3. Reset
-        btn.innerText = "✓ Updated";
-        setTimeout(() => {
-          btn.innerText = originalText;
-          btn.disabled = false;
-        }, 2000);
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Error connecting to Weather API.");
-        btn.innerText = originalText;
-        btn.disabled = false;
-      });
-  }
-
-  // --- Weather Helpers ---
-  function getCardinalDirection(angle) {
-    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    return directions[Math.round(angle / 45) % 8];
-  }
-
-  function decodeWeatherCode(code) {
-    const codes = {
-      0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-      45: "Fog", 48: "Depositing rime fog",
-      51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
-      61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
-      71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
-      80: "Slight showers", 81: "Moderate showers", 82: "Violent showers",
-      95: "Thunderstorm", 96: "Thunderstorm + hail"
-    };
-    return codes[code] || "Unknown";
-  }
-
-}); // <--- END OF TURBO LOAD
-</script>

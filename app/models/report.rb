@@ -29,8 +29,8 @@ class Report < ApplicationRecord
   # NESTED ENTRIES (The "Big Four" Tables)
   
   # A. INSPECTION ENTRIES (Bid Items)
-  has_many :inspection_entries, dependent: :destroy
-  accepts_nested_attributes_for :inspection_entries, allow_destroy: true, reject_if: :all_blank
+  has_many :placed_quantities, dependent: :destroy
+  accepts_nested_attributes_for :placed_quantities, allow_destroy: true, reject_if: :all_blank
 
   # B. EQUIPMENT ENTRIES
   has_many :equipment_entries, dependent: :destroy
@@ -75,7 +75,7 @@ class Report < ApplicationRecord
   scope :filter_by_project, ->(project_id) { where(project_id: project_id) if project_id.present? }
   
   scope :filter_by_bid_item, ->(bid_item_id) {
-    joins(:inspection_entries).where(inspection_entries: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
+    joins(:placed_quantities).where(placed_quantities: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
   }
   
   scope :filter_by_date_range, ->(start_date, end_date) { 

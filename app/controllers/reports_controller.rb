@@ -41,14 +41,14 @@ class ReportsController < ApplicationController
   def new
     @report = Report.new
     # Build 3 entries by default
-    3.times { @report.inspection_entries.build }
+    3.times { @report.placed_quantities.build }
     # Build 1 equipment entry by default
     1.times { @report.equipment_entries.build }
   end
 
   # GET /reports/1/edit
   def edit
-    @report.inspection_entries.build if @report.inspection_entries.empty?
+    @report.placed_quantities.build if @report.placed_quantities.empty?
     @report.equipment_entries.build if @report.equipment_entries.empty?
   end
 
@@ -165,14 +165,14 @@ class ReportsController < ApplicationController
           temps = [report.temp_1, report.temp_2, report.temp_3].compact.join("/")
           winds = [report.wind_1, report.wind_2, report.wind_3].compact.join("/")
 
-          if report.inspection_entries.empty?
+          if report.placed_quantities.empty?
             csv << [
               report.dir_number, report.start_date, report.end_date, inspector_name, report.project&.name, report.phase&.name, report.status&.humanize,
               "#{report.shift_start}-#{report.shift_end}", temps, winds, report.contractor,
               "---", "No Activity", 0, "---", "---", report.commentary
             ]
           else
-            report.inspection_entries.each do |entry|
+            report.placed_quantities.each do |entry|
               csv << [
                 report.dir_number, report.start_date, report.end_date, inspector_name, report.project&.name, report.phase&.name, report.status&.humanize,
                 "#{report.shift_start}-#{report.shift_end}", temps, winds, report.contractor,
@@ -223,7 +223,7 @@ class ReportsController < ApplicationController
         equipment_entries_attributes: [
           :id, :make_model, :hours, :quantity, :contractor, :_destroy
         ],
-        inspection_entries_attributes: [
+        placed_quantities_attributes: [
           :id, :bid_item_id, :quantity, :notes, :_destroy, 
           :checklist_answers 
         ],

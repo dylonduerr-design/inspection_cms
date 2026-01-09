@@ -465,3 +465,19 @@ dialog::backdrop {
 .opacity-50 { opacity: 0.5; }
 .cursor-not-allowed { cursor: not-allowed; }
 .text-muted-sm { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+/* MAESTRO ADDITION: Clean up inline flex styles */
+.nested-row-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.nested-row-container .remove-row-btn {
+  color: var(--danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto; /* Pushes delete button to the far right */
+}

@@ -1,0 +1,14 @@
+<p style="color: green"><%= notice %></p>
+
+<h1>Inspection entries</h1>
+
+<div id="placed_quantities">
+  <% @placed_quantities.each do |placed_quantity| %>
+    <%= render placed_quantity %>
+    <p>
+      <%= link_to "Show this inspection entry", placed_quantity %>
+    </p>
+  <% end %>
+</div>
+
+<%= link_to "New inspection entry", new_placed_quantity_path %>

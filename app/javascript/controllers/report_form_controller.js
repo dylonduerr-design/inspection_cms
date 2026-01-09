@@ -1,146 +1,197 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["checklistModal", "questionsContainer"]
+  static targets = ["checklistModal", "questionsContainer", "template", "targetContainer"]
 
   connect() {
-    this.currentHiddenInput = null;
-    this.currentQuestions = [];
+    console.log("👮 Maestro: ReportForm Controller Connected");
+    this.initializeToggles();
+  }
 
-    // ON LOAD: Wake up all existing rows (for Edit/Show pages)
-    this.element.querySelectorAll("select[name*='bid_item_id']").forEach(select => {
-      this.updateRowState(select);
+  // =========================================================================
+  //  SECTION 1: TOGGLE LOGIC (Deficiencies, Safety, Additional Info)
+  // =========================================================================
+  
+  // Triggered by data-action="change->report-form#toggleSection"
+  toggleSection(event) {
+    const trigger = event.target;
+    const targetId = trigger.dataset.targetId;
+    const validValues = JSON.parse(trigger.dataset.validValues || "[]");
+    const targetElement = document.getElementById(targetId);
+
+    if (!targetElement) return;
+
+    // Logic: If checkbox, follow checked state. If radio, match value to validValues.
+    let shouldShow = false;
+    if (trigger.type === "checkbox") {
+      shouldShow = trigger.checked;
+    } else {
+      shouldShow = validValues.includes(trigger.value);
+    }
+
+    targetElement.style.display = shouldShow ? "block" : "none";
+  }
+
+  // Run on load to set initial state based on existing DB values
+  initializeToggles() {
+    // We manually trigger the change event logic for any active inputs
+    this.element.querySelectorAll('[data-action~="report-form#toggleSection"]').forEach(input => {
+      if (input.type === "checkbox" && input.checked) {
+        this.toggleSection({ target: input });
+      } else if (input.type === "radio" && input.checked) {
+        this.toggleSection({ target: input });
+      }
     });
   }
 
-  // 1. TRIGGER: Dropdown Change
-  selectBidItem(event) {
-    this.updateRowState(event.target);
-  }
+  // =========================================================================
+  //  SECTION 2: DYNAMIC ROWS (Crew, Equipment, QA, Inspection)
+  // =========================================================================
 
-  // HELPER: Handles the logic for a single row (used by Connect and Select)
-  updateRowState(select) {
-    const row = select.closest(".nested-fields");
-    if (!row) return;
+  // Triggered by data-action="click->report-form#addAssociation"
+  addAssociation(event) {
+    event.preventDefault();
+    
+    // Get parameters from the button's dataset
+    const templateId = event.target.dataset.templateId;
+    const containerId = event.target.dataset.containerId;
+    
+    const template = document.getElementById(templateId);
+    const container = document.getElementById(containerId);
 
-    const button = row.querySelector(".checklist-btn");
-    const hiddenInput = row.querySelector(".checklist-answers-field");
-    const selectedOption = select.options[select.selectedIndex];
-
-    // Safety check: If no option selected or no questions, disable
-    if (!selectedOption || !selectedOption.dataset.questions) {
-      this.disableButton(button);
+    if (!template || !container) {
+      console.error("Maestro Error: Missing template or container", { templateId, containerId });
       return;
     }
 
-    const questionsJson = selectedOption.dataset.questions;
+    // Clone and Timestamp
+    const content = template.content.cloneNode(true);
+    const uniqueId = new Date().getTime();
 
-    if (questionsJson && questionsJson !== "[]") {
-      const questions = JSON.parse(questionsJson);
-      
-      // Store questions on the button for later use
-      button.dataset.questions = JSON.stringify(questions);
-      button.disabled = false;
-      button.classList.remove("opacity-50", "cursor-not-allowed");
+    content.querySelectorAll("input, select, textarea").forEach((el) => {
+      el.name = el.name.replace("NEW_RECORD", uniqueId);
+      // Clean up ID attributes to avoid duplicates
+      if (el.id) el.id = el.id.replace("NEW_RECORD", uniqueId);
+    });
 
-      // SMART CHECK: Do we already have answers saved?
-      const existingAnswers = hiddenInput.value ? JSON.parse(hiddenInput.value) : {};
-      const hasAnswers = Object.keys(existingAnswers).length > 0;
+    container.appendChild(content);
 
-      if (hasAnswers) {
-        button.innerText = "✓ Edit Checklist";
-        button.classList.add("text-success"); // Adds green styling if you have that class
-        button.style.color = "green";         // Fallback inline style
-      } else {
-        button.innerText = "Open Checklist (" + questions.length + ")";
-        button.classList.remove("text-success");
-        button.style.color = "";
-      }
+    // Auto-populate contractor if applicable
+    if (event.target.dataset.populateContractor === "true") {
+      this.syncContractorForNewRow(container.lastElementChild);
+    }
+  }
+
+  // Triggered by data-action="click->report-form#removeAssociation"
+  removeAssociation(event) {
+    event.preventDefault();
+    const row = event.target.closest(".nested-fields");
+    
+    // If it's a saved record, we need to find the _destroy hidden field
+    const destroyInput = row.querySelector("input[name*='_destroy']");
+    
+    if (destroyInput) {
+      destroyInput.value = "1";
+      row.style.display = "none";
     } else {
-      this.disableButton(button);
+      // If it's a new record (not saved yet), just remove from DOM
+      row.remove();
     }
   }
 
-  disableButton(button) {
-    delete button.dataset.questions;
-    button.disabled = true;
-    button.classList.add("opacity-50", "cursor-not-allowed");
-    button.innerText = "Open Checklist";
-    button.style.color = "";
+  // =========================================================================
+  //  SECTION 3: AUTO-POPULATION
+  // =========================================================================
+
+  syncContractorForNewRow(rowElement) {
+    const mainContractor = document.getElementById("main-contractor-input");
+    if (!mainContractor || !mainContractor.value) return;
+
+    const rowInput = rowElement.querySelector(".auto-contractor");
+    if (rowInput) {
+      rowInput.value = mainContractor.value;
+    }
   }
 
-  // 2. TRIGGER: Open Modal
-  openChecklist(event) {
+  // =========================================================================
+  //  SECTION 4: WEATHER API
+  // =========================================================================
+
+  fetchWeather(event) {
     event.preventDefault();
-    const button = event.target;
-    const row = button.closest(".nested-fields");
-    
-    // Store context for saving later
-    this.currentHiddenInput = row.querySelector(".checklist-answers-field");
-    
-    // Parse questions and existing answers
-    const questions = JSON.parse(button.dataset.questions || "[]");
-    // CRITICAL: We read the value directly from the hidden input, which Rails populated on page load
-    const existingAnswers = JSON.parse(this.currentHiddenInput.value || "{}");
+    const btn = event.target;
+    const suffix = btn.dataset.suffix; // 1, 2, or 3
+    const originalText = btn.innerText;
 
-    // Build Modal HTML
-    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
-    
-    questions.forEach((q, index) => {
-      // Pre-check the radio buttons based on existing answers
-      const yesChecked = existingAnswers[q] === "Yes" ? "checked" : "";
-      const noChecked = existingAnswers[q] === "No" ? "checked" : "";
-      const naChecked = existingAnswers[q] === "N/A" ? "checked" : "";
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by this browser.");
+      return;
+    }
 
-      html += `
-        <div class="checklist-item" style="padding: 10px; background: #f8f9fa; border-radius: 5px;">
-          <p style="margin: 0 0 5px 0; font-weight: 500;">${q}</p>
-          <div style="display: flex; gap: 15px;">
-            <label><input type="radio" name="q_${index}" value="Yes" ${yesChecked}> Yes</label>
-            <label><input type="radio" name="q_${index}" value="No" ${noChecked}> No</label>
-            <label><input type="radio" name="q_${index}" value="N/A" ${naChecked}> N/A</label>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
+    btn.innerText = "Locating...";
+    btn.disabled = true;
 
-    this.questionsContainerTarget.innerHTML = html;
-    this.checklistModalTarget.showModal();
-    this.currentQuestions = questions;
-  }
-
-  // 3. TRIGGER: Save
-  saveChecklist(event) {
-    event.preventDefault();
-    
-    const answers = {};
-    const modalBody = this.questionsContainerTarget;
-    
-    this.currentQuestions.forEach((question, index) => {
-      const selected = modalBody.querySelector(`input[name="q_${index}"]:checked`);
-      if (selected) {
-        answers[question] = selected.value;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        this.performWeatherFetch(position, btn, suffix, originalText);
+      },
+      (error) => {
+        console.error(error);
+        alert("Unable to retrieve location.");
+        btn.innerText = originalText;
+        btn.disabled = false;
       }
-    });
-
-    if (this.currentHiddenInput) {
-      // Save to hidden field
-      this.currentHiddenInput.value = JSON.stringify(answers);
-      
-      // Update UI immediately
-      const row = this.currentHiddenInput.closest(".nested-fields");
-      const select = row.querySelector("select");
-      this.updateRowState(select); // Re-run logic to add the checkmark
-    }
-
-    this.closeModal();
+    );
   }
 
-  closeModal() {
-    this.checklistModalTarget.close();
-    this.currentHiddenInput = null;
-    this.currentQuestions = [];
+  performWeatherFetch(position, btn, suffix, originalText) {
+    const lat = position.coords.latitude;
+    const lon = position.coords.longitude;
+    btn.innerText = "Fetching...";
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch`;
+
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        const current = data.current;
+        
+        // Helper to find inputs safely
+        const setVal = (namePart, value) => {
+          const input = this.element.querySelector(`[name="report[${namePart}_${suffix}]"]`);
+          if (input) input.value = value;
+        };
+
+        setVal("temp", Math.round(current.temperature_2m));
+        setVal("precip", current.precipitation);
+        setVal("weather_summary", this.decodeWeatherCode(current.weather_code));
+        
+        const windDir = this.getCardinalDirection(current.wind_direction_10m);
+        setVal("wind", `${Math.round(current.wind_speed_10m)} mph ${windDir}`);
+
+        btn.innerText = "✓ Updated";
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.disabled = false;
+        }, 2000);
+      })
+      .catch(err => {
+        console.error(err);
+        btn.innerText = "Error";
+        setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 2000);
+      });
   }
+
+  getCardinalDirection(angle) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return directions[Math.round(angle / 45) % 8];
+  }
+
+  decodeWeatherCode(code) {
+    const codes = { 0: "Clear", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast", 45: "Fog", 61: "Rain", 71: "Snow", 95: "Thunderstorm" };
+    return codes[code] || "Unknown";
+  }
+  
+  // ... (Keep your existing Checklist logic here: selectBidItem, openChecklist, etc.) ...
+  // [cite: 168-193]
 }

@@ -1,28 +1,40 @@
 class BidItem < ApplicationRecord
-  # SAFETY: Prevent deleting a Bid Item if it is used in existing reports
-  has_many :inspection_entries, dependent: :restrict_with_error
+  # 1. ASSOCIATIONS
+  # It connects to a Spec, but acts as a standalone if needed (optional)
+  belongs_to :spec_item, optional: true
   
-  # --- VALIDATION ---
+  has_many :placed_quantities, dependent: :restrict_with_error
+  
+  # 2. VALIDATIONS
   validate :checklist_questions_must_be_array
 
-  # --- VIRTUAL ATTRIBUTE ---
-  # This acts as a translator between the Form (Text Area) and the Database (Array)
-  
-  # 1. GETTER: Convert DB Array -> Text (One question per line)
-  def questions_text
-    checklist_questions&.join("\n")
+  # 3. THE "TRAFFIC COP" (Smart Logic)
+  # This determines which questions appear in the form
+  def active_questions
+    # A. If Bid Item has specific overrides, use them
+    return checklist_questions if checklist_questions.present? && checklist_questions.any?
+    
+    # B. Otherwise, fallback to the Spec's questions
+    return spec_item.checklist_questions if spec_item&.checklist_questions.present?
+    
+    # C. Default to empty
+    []
   end
 
-  # 2. SETTER: Convert Form Text -> DB Array (Splitting by new lines)
+  # 4. VIRTUAL ATTRIBUTES (For the Form)
+  # GETTER: Returns text for the textarea
+  def questions_text
+    active_questions.join("\n")
+  end
+
+  # SETTER: Saves text as array (Only saves to BidItem override)
   def questions_text=(text)
-    # .to_s ensures safety if nil is passed
     self.checklist_questions = text.to_s.split("\n").map(&:strip).reject(&:blank?)
   end
 
   private
 
   def checklist_questions_must_be_array
-    # Ensure we never accidentally save a string into the JSON array column
     if checklist_questions.present? && !checklist_questions.is_a?(Array)
       errors.add(:checklist_questions, "must be a list of questions")
     end

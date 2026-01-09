@@ -66,7 +66,7 @@ class WordReportExporter
 
       # B. BID ITEMS TABLE
       if table_has_placeholder?(table, '[DESC]')
-        populate_table(table, report.inspection_entries, {
+        populate_table(table, report.placed_quantities, {
           '[CODE]' => ->(entry) { entry.bid_item&.code },
           '[DESC]' => ->(entry) { entry.bid_item&.description },
           '[QTY]'  => :quantity,

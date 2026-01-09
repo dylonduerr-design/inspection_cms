@@ -1,6 +1,6 @@
 require "test_helper"
 
-class PlacedQuantityTest < ActiveSupport::TestCase
+class SpecItemTest < ActiveSupport::TestCase
   # test "the truth" do
   #   assert true
   # end

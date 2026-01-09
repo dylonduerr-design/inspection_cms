@@ -4,9 +4,9 @@ class BidItemsController < ApplicationController
   # GET /bid_items
   def index
     # The Dashboard Logic: Sums quantities per item
-    @bid_items = BidItem.left_joins(:inspection_entries)
+    @bid_items = BidItem.left_joins(:placed_quantities)
                         .group(:id)
-                        .select("bid_items.*, COALESCE(SUM(inspection_entries.quantity), 0) as total_quantity")
+                        .select("bid_items.*, COALESCE(SUM(placed_quantities.quantity), 0) as total_quantity")
                         .order(:code)
   end
 

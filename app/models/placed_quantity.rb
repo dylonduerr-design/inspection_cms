@@ -1,4 +1,4 @@
-class InspectionEntry < ApplicationRecord
+class PlacedQuantity < ApplicationRecord
   belongs_to :report
   belongs_to :bid_item
 
