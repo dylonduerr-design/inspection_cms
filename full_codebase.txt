@@ -1,4 +1,4 @@
-INSPECTION CMS CODEBASE EXPORT - 2026-01-09 00:05:45 -0800
+INSPECTION CMS CODEBASE EXPORT - 2026-01-09 15:37:56 -0800
 
 
 ================================================================================
@@ -48,7 +48,7 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "bootsnap", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-# gem "image_processing", "~> 1.2"
+ gem "image_processing", "~> 1.2"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -429,14 +429,14 @@ body {
 .revision-input { flex: 1; border-color: var(--qc-border); background: rgba(255,255,255,0.5); }
 
 /* Attachments Grid */
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 .gallery-card {
   border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card);
   overflow: hidden; text-align: center; padding-bottom: 12px; transition: all 0.2s ease;
 }
 .gallery-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-float); }
 .thumbnail-area {
-  height: 160px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center;
+  height: 300px; background: var(--bg-hover); display: flex; align-items: center; justify-content: center;
   border-bottom: 1px solid var(--border-color); margin-bottom: 10px; overflow: hidden;
 }
 .thumbnail-area img { width: 100%; height: 100%; object-fit: cover; }
@@ -960,7 +960,6 @@ class ReportsController < ApplicationController
                end
 
     # 3. FILTER: Actually apply the status filter
-    # This prevents cross-contamination of statuses (e.g. seeing 'qc' in 'creating' tab)
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
 
     # 4. SEARCH: Apply the remaining filters (Date, Project, Inspector)
@@ -978,11 +977,20 @@ class ReportsController < ApplicationController
 
   # GET /reports/new
   def new
-    @report = Report.new
-    # Build 3 entries by default
-    3.times { @report.placed_quantities.build }
-    # Build 1 equipment entry by default
-    1.times { @report.equipment_entries.build }
+    # --- MAESTRO: DRAFT PATTERN IMPLEMENTATION ---
+    # 1. Create the "Shell" Record immediately
+    # We bypass validations (validate: false) so we can get an ID right away.
+    # This allows checklists and attachments to function immediately.
+    @report = current_user.reports.build(status: :creating)
+    
+    if @report.save(validate: false)
+      # 2. Redirect straight to the Edit form
+      # The user won't know the difference, but technically they are editing an existing record.
+      redirect_to edit_report_path(@report)
+    else
+      # Fallback in unlikely event save fails (e.g. database down)
+      redirect_to reports_path, alert: "Could not initialize new report."
+    end
   end
 
   # GET /reports/1/edit
@@ -992,6 +1000,8 @@ class ReportsController < ApplicationController
   end
 
   # POST /reports
+  # Note: With Draft Pattern, this action is rarely hit (since 'new' redirects to 'edit' -> 'update'),
+  # but we keep it for fallback or API usage.
   def create
     @report = current_user.reports.build(report_params)
     @report.status ||= :creating
@@ -1039,7 +1049,6 @@ class ReportsController < ApplicationController
   # --- EXPORT TO WORD ACTION ---
   def export_word
     # 1. Delegate the work to your Service Class
-    # [cite_start]This uses the logic in word_report_exporter.rb [cite: 24]
     temp_file = WordReportExporter.generate(@report)
 
     if temp_file
@@ -1071,12 +1080,18 @@ class ReportsController < ApplicationController
 
     def apply_search_filters
       # NOTE: Status filtering is now handled in the index action!
-      # [cite_start]We removed the duplicate check here to fix the syntax error. [cite: 80, 81]
 
       @reports = @reports.filter_by_inspector(params[:inspector]) if params[:inspector].present?
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
-      
+
+      # Updated Precip Filter
+      # We assume the user wants to find records with "At least X amount of rain"
+      if params[:precip_min].present?
+         max = params[:precip_max].presence || 100 # Default max if user leaves it blank
+         @reports = @reports.filter_by_precip_range(params[:precip_min], max)
+      end
+
       # Date Range Filter
       if params[:start_date].present?
         # Ensure we handle the end date if the scope expects a range
@@ -1150,7 +1165,6 @@ class ReportsController < ApplicationController
         :additional_activities, :additional_info,
         
         # --- 5. ATTACHMENTS ---
-        attachments: [], 
         report_attachments_attributes: [:id, :caption, :file, :_destroy],
 
         # --- 6. NESTED TABLES ---
@@ -1166,6 +1180,9 @@ class ReportsController < ApplicationController
           :id, :bid_item_id, :quantity, :notes, :_destroy, 
           :checklist_answers 
         ],
+        # MAESTRO: Added to support nested checklists if needed in future
+        checklist_entries_attributes: [:id, :spec_item_id, :_destroy, checklist_answers: {}],
+
         qa_entries_attributes: [
           :id, :qa_type, :location, :result, :note, :_destroy
         ]
@@ -1948,8 +1965,6 @@ FILE: app/models/report.rb
 class Report < ApplicationRecord
   # --- 1. AUTO-SET DEFAULT VALUES & CALLBACKS ---
   after_initialize :set_defaults, if: :new_record?
-  
-  # TRIGGER: Run the logic engine before every save
   before_save :calculate_automatic_result
 
   def set_defaults
@@ -1963,8 +1978,8 @@ class Report < ApplicationRecord
   validates :phase, presence: true
 
   # --- 3. ASSOCIATIONS ---
-  belongs_to :project
-  belongs_to :phase
+  belongs_to :project, optional: true
+  belongs_to :phase, optional: true
   belongs_to :user
   
   has_many :activity_logs, dependent: :destroy
@@ -1972,90 +1987,105 @@ class Report < ApplicationRecord
   # ATTACHMENTS
   has_many :report_attachments, dependent: :destroy
   accepts_nested_attributes_for :report_attachments, allow_destroy: true
-  has_many_attached :attachments
 
-  # NESTED ENTRIES (The "Big Four" Tables)
-  
-  # A. INSPECTION ENTRIES (Bid Items)
+  # NESTED ENTRIES
   has_many :placed_quantities, dependent: :destroy
   accepts_nested_attributes_for :placed_quantities, allow_destroy: true, reject_if: :all_blank
 
-  # B. CHECKLIST ENTRIES (New!)
   has_many :checklist_entries, dependent: :destroy
 
-  # C. EQUIPMENT ENTRIES
   has_many :equipment_entries, dependent: :destroy
-  # REJECT IF: Make/Model is blank
-  accepts_nested_attributes_for :equipment_entries, 
-                                allow_destroy: true, 
-                                reject_if: proc { |att| att['make_model'].blank? }
+  accepts_nested_attributes_for :equipment_entries, allow_destroy: true, reject_if: proc { |att| att['make_model'].blank? }
 
-  # D. CREW ENTRIES
   has_many :crew_entries, dependent: :destroy
-  # REJECT IF: No key crew fields are entered
-  accepts_nested_attributes_for :crew_entries, 
-                                allow_destroy: true, 
-                                reject_if: proc { |att| att['foreman'].blank? && att['superintendent'].blank? && att['laborer_count'].blank? }
+  accepts_nested_attributes_for :crew_entries, allow_destroy: true, reject_if: proc { |att| att['foreman'].blank? && att['superintendent'].blank? && att['laborer_count'].blank? }
 
-  # E. QA ENTRIES
   has_many :qa_entries, dependent: :destroy
   accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
 
   # --- 4. ENUMS ---
   enum status: { creating: 0, qc_review: 1, revise: 2, authorization: 3 }
   enum result: { pending: 0, pass: 1, fail: 2, as_built: 3 }
-  
   enum deficiency_status: { no_deficiency: 0, yes_deficiency: 1, cdr: 2, ncr: 3 }
   
+  # Site Conditions
   enum traffic_control: { tc_na: 0, tc_yes: 1, tc_no: 2 }
   enum environmental: { env_na: 0, env_yes: 1, env_no: 2 }
   enum security: { sec_na: 0, sec_yes: 1, sec_no: 2 }
   enum safety_incident: { safety_no: 0, safety_yes: 1, safety_na: 2 }
-  
   enum air_ops_coordination: { air_na: 0, air_yes: 1, air_no: 2 }
   enum swppp_controls: { swppp_na: 0, swppp_yes: 1, swppp_no: 2 }
 
-  # --- 5. SEARCH SCOPES ---
+  # --- 5. SEARCH SCOPES (Expanded) ---
+  
+  # Existing Scopes
   scope :filter_by_inspector, ->(query) { 
     joins(:user).where("users.email ILIKE ?", "%#{query}%") if query.present?
   }
-
   scope :filter_by_project, ->(project_id) { where(project_id: project_id) if project_id.present? }
-  
-  scope :filter_by_bid_item, ->(bid_item_id) {
-    joins(:placed_quantities).where(placed_quantities: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
-  }
-  
   scope :filter_by_date_range, ->(start_date, end_date) { 
     where(start_date: start_date..end_date) if start_date.present? && end_date.present?
   }
-
-  # --- 6. HELPER METHODS ---
   
-  # LOGIC ENGINE: "Worst-to-Best" Result Calculation
+  # Bid Item Filter (Kept for compatibility)
+  scope :filter_by_bid_item, ->(bid_item_id) {
+    joins(:placed_quantities).where(placed_quantities: { bid_item_id: bid_item_id }).distinct if bid_item_id.present?
+  }
+
+  # --- NEW MAESTRO FILTERS ---
+
+  # 1. Filter by QA Test Type (e.g., "Find all reports with Concrete Slump tests")
+  scope :filter_by_test_type, ->(qa_type_val) {
+    return unless qa_type_val.present?
+    # We join qa_entries and filter by the integer enum value
+    joins(:qa_entries).where(qa_entries: { qa_type: qa_type_val }).distinct
+  }
+
+  # 2. Filter by Spec Item (Deep Nested Search)
+  # Finds reports that have a Bid Item linked to a specific Spec (e.g., "P-401")
+  scope :filter_by_spec_item, ->(spec_item_id) {
+    return unless spec_item_id.present?
+    joins(placed_quantities: { bid_item: :spec_item })
+      .where(spec_items: { id: spec_item_id })
+      .distinct
+  }
+
+  # 3. Filter by Precipitation (Smart Numeric Cast)
+  # USAGE: Report.filter_by_precip_range(0.1, 5.0)
+  # LOGIC: "Treat 'Trace' or 'None' as 0. Treat '0.50' as 0.5. Find matches in range."
+  scope :filter_by_precip_range, ->(min, max) {
+    return unless min.present? && max.present?
+    
+    # Helper to build the safe conversion SQL for a column
+    # If the column matches a number regex, cast it. Otherwise, treat as 0.
+    safe_cast = ->(col) { 
+      "CASE WHEN #{col} ~ '^[0-9]+(\\.[0-9]+)?$' THEN #{col}::numeric ELSE 0 END" 
+    }
+
+    where(
+      "(#{safe_cast.call('precip_1')} BETWEEN ? AND ?) OR " \
+      "(#{safe_cast.call('precip_2')} BETWEEN ? AND ?) OR " \
+      "(#{safe_cast.call('precip_3')} BETWEEN ? AND ?)",
+      min, max, min, max, min, max
+    )
+  }
+  # --- 6. HELPER METHODS ---
   def calculate_automatic_result
-    # TIER 1: AUTOMATIC FAIL (The "Worst" Case)
-    # Fails if NCR/CDR exists OR if any attached QA entry is 'qa_fail'
     if cdr? || ncr? || qa_entries.any? { |test| test.qa_fail? }
       self.result = :fail
       return
     end
 
-    # TIER 2: PENDING (The "Middle" Case)
-    # Pending if minor deficiency exists OR if any QA entry is 'qa_pending'
     if yes_deficiency? || qa_entries.any? { |test| test.qa_pending? }
       self.result = :pending
       return
     end
 
-    # TIER 3: PASS (The "Best" Case)
-    # If we survive the checks above, the report passes.
     self.result = :pass
   end
 
   def inspector_name
-    # Update this to user&.full_name if you implemented the Name migration!
-    user&.email 
+    user&.email
   end
 end
 
@@ -2109,11 +2139,16 @@ class WordReportExporter
     template_path = Rails.root.join('app', 'assets', 'documents', 'inspection_template.docx')
     return nil unless File.exist?(template_path)
 
-    # Convert Pathname to String for the docx gem
-    doc = Docx::Document.open(template_path.to_s)
+    # 2. PREPARE CAPTION MAPPING
+    caption_map = {}
+    (1..6).each do |i|
+      attachment = report.report_attachments[i-1]
+      text = attachment ? (attachment.caption || "") : ""
+      caption_map["{{CAPTION #{i}}}"] = text
+    end
 
-    # 2. DEFINE REPLACEMENTS
-    replacements = {
+    # 3. DEFINE REPLACEMENTS
+    base_replacements = {
       # --- General Info ---
       '{{PROJECT}}' => report.project&.name,
       '{{START_DATE}}' => report.start_date&.strftime("%m/%d/%Y"),
@@ -2121,18 +2156,17 @@ class WordReportExporter
       '{{END_DATE}}' => report.end_date&.strftime("%m/%d/%Y"),
       '{{END_SHIFT}}' => report.shift_end,
       '{{INSPECTOR}}' => report.user.respond_to?(:full_name) ? report.user.full_name : report.user.email,
-      
-      # --- Weather (Combined) ---
+
+      # --- Weather ---
       '{{TEMP}}' => [report.temp_1, report.temp_2, report.temp_3].compact.join(' / '),
       '{{WEATHER}}' => [report.weather_summary_1, report.weather_summary_2, report.weather_summary_3].compact.join(' / '),
       '{{WIND}}' => [report.wind_1, report.wind_2, report.wind_3].compact.join(' / '),
       '{{PRECIP}}' => [report.precip_1, report.precip_2, report.precip_3].compact.join(' / '),
-      '{{VIS}}' => "N/A",           
-      '{{SURFACE}}' => "N/A", 
+      '{{VIS}}' => "N/A",
+      '{{SURFACE}}' => "N/A",
       '{{WEATHER_EVENT}}' => "N/A",
 
-      # --- Compliance & Safety ---
-      # This calls the helper method defined below!
+      # --- Compliance ---
       '{{SEC_STATUS}}' => human_enum(report.security),
       '{{TC_STATUS}}' => human_enum(report.traffic_control),
       '{{AIR_OPS}}' => human_enum(report.air_ops_coordination),
@@ -2140,26 +2174,29 @@ class WordReportExporter
       '{{ENV_STATUS}}' => human_enum(report.environmental),
       '{{SAF_STATUS}}' => human_enum(report.safety_incident),
       '{{SAF_DESCRIPTION}}' => report.safety_desc || "None",
-
-      # --- Deficiencies ---
-      '{{DEF_STATUS}}' => human_enum(report.deficiency_status), 
+      '{{DEF_STATUS}}' => human_enum(report.deficiency_status),
       '{{DEF_DESC}}' => report.deficiency_desc || "None",
-      
+
       # --- Commentary ---
       '{{COMMENTARY}}' => report.commentary,
       '{{ADD_ACTIVITY}}' => report.additional_activities,
       '{{ADD_INFO}}' => report.additional_info
     }
 
-    # 3. GLOBAL FIND & REPLACE
+    replacements = base_replacements.merge(caption_map)
+
+    # 4. OPEN DOCUMENT
+    doc = Docx::Document.open(template_path.to_s)
+
+    # 5. GLOBAL FIND & REPLACE
     replace_all(doc, replacements)
 
-    # 4. DYNAMIC TABLE PROCESSING
+    # 6. DYNAMIC TABLE PROCESSING
     doc.tables.each do |table|
       # A. QA TABLE
       if table_has_placeholder?(table, '[TEST]')
         populate_table(table, report.qa_entries, {
-          '[CODE]' => :qa_type, 
+          '[CODE]' => :qa_type,
           '[TEST]' => :qa_type,
           '[LOCATION]' => :location,
           '[RESULT]' => :result,
@@ -2200,7 +2237,7 @@ class WordReportExporter
       end
     end
 
-    # 5. SAVE
+    # 7. SAVE
     temp_file = Tempfile.new(['report', '.docx'])
     doc.save(temp_file.path)
     temp_file
@@ -2208,47 +2245,50 @@ class WordReportExporter
 
   private
 
-  # --- HELPER: Enum Formatter ---
-  # Defined here so it is visible to the 'generate' method above
   def self.human_enum(val)
     return "N/A" if val.nil? || val == 0
     val.include?('_') ? val.split('_').last.capitalize : val.humanize
   end
 
-  # --- HELPER: Global Replacement ---
   def self.replace_all(doc, replacements)
-    doc.paragraphs.each do |p|
-      replacements.each { |key, value| p.text = p.text.gsub(key, value.to_s) }
-    end
+    doc.paragraphs.each { |p| replace_in_paragraph(p, replacements) }
+    doc.tables.each { |t| replace_in_table(t, replacements) }
+  end
 
-    doc.tables.each do |table|
-      table.rows.each do |row|
-        row.cells.each do |cell|
-          cell.paragraphs.each do |p|
-            replacements.each { |key, value| p.text = p.text.gsub(key, value.to_s) }
-          end
-        end
+  def self.replace_in_paragraph(p, replacements)
+    replacements.each { |key, value| p.text = p.text.gsub(key, value.to_s) }
+  end
+
+  def self.replace_in_table(table, replacements)
+    table.rows.each do |row|
+      row.cells.each do |cell|
+        cell.paragraphs.each { |p| replace_in_paragraph(p, replacements) }
       end
     end
   end
 
-  # --- HELPER: Table Detection ---
   def self.table_has_placeholder?(table, tag)
     table.rows.any? { |row| row.cells.any? { |cell| clean_text(cell.text).include?(tag) } }
   end
 
-  # --- HELPER: Table Population ---
+  # --- HELPER: Table Population (CORRECTED) ---
   def self.populate_table(table, data_collection, mapping)
+    # 1. Find the template row
     template_row_index = table.rows.find_index do |row|
-      row.cells.any? { |cell| mapping.keys.any? { |k| clean_text(cell.text).include?(k) } } 
+      row.cells.any? { |cell| mapping.keys.any? { |k| clean_text(cell.text).include?(k) } }
     end
     return unless template_row_index
 
     template_row = table.rows[template_row_index]
 
     data_collection.each do |item|
-      new_row = table.send(:insert_row_after, table.rows.size - 1, template_row)
+      # 2. Clone the template row using deeper XML copy
+      new_row = template_row.copy
       
+      # 3. Insert BEFORE the template row
+      template_row.node.add_previous_sibling(new_row.node)
+
+      # 4. Fill in the data
       new_row.cells.each do |cell|
         mapping.each do |placeholder, attribute|
           if clean_text(cell.text).include?(placeholder)
@@ -2260,15 +2300,22 @@ class WordReportExporter
                   else
                     ""
                   end
-            
+
             regex = /["“”]?#{Regexp.escape(placeholder)}["“”]?/
-            cell.text = cell.text.gsub(regex, val.to_s)
+            
+            # --- FIX IS HERE ---
+            # Instead of cell.text =, we iterate over the paragraphs inside the cell
+            cell.paragraphs.each do |p|
+              p.text = p.text.gsub(regex, val.to_s)
+            end
+            # -------------------
           end
         end
       end
     end
 
-    table.remove_row(template_row_index)
+    # 5. Remove the template row
+    template_row.node.remove
   end
 
   def self.clean_text(text)
@@ -3390,16 +3437,17 @@ FILE: app/views/reports/_form.html.erb
     </div>
   </div>
 
- <%# --- 8. PHOTOS & ATTACHMENTS --- %>
+  <%# --- 8. PHOTOS & ATTACHMENTS (UPDATED) --- %>
   <div class="form-card">
     <h2>6. Photos & Attachments</h2>
 
-    <div class="gallery-grid">
+    <div id="attachments-container" class="gallery-grid">
       <%= form.fields_for :report_attachments do |attachment_form| %>
-        <div class="gallery-card">
+        <div class="gallery-card nested-fields">
           <div class="thumbnail-area">
             <% if attachment_form.object.file.attached? %>
               <% if attachment_form.object.file.representable? %>
+                <%# MAESTRO: image_processing gem now handles this resize %>
                 <%= image_tag attachment_form.object.file.representation(resize_to_limit: [400, 400]) %>
               <% else %>
                 <span class="doc-icon">📄</span>
@@ -3416,11 +3464,15 @@ FILE: app/views/reports/_form.html.erb
       <% end %>
     </div>
 
-    <div class="conditional-field" style="margin-top: 20px;">
-      <label style="font-weight: bold; display: block; margin-bottom: 10px;">+ Upload New Photos/Documents</label>
-      <%= file_field_tag "report[report_attachments_attributes][][file]", multiple: true, class: "form-group input" %>
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;"><i>Select multiple files. You can add captions after clicking "Save".</i></p>
-    </div>
+    <%# MAESTRO: Replaced 'file_field_tag' with Stimulus action to add captioned rows %>
+    <button type="button" 
+            class="btn-secondary" 
+            data-action="click->report-form#addAssociation"
+            data-template-id="attachment-template"
+            data-container-id="attachments-container"
+            style="margin-top: 20px;">
+      + Add Photo/Document
+    </button>
   </div>
 
   <div class="actions" style="margin-top: 2rem; text-align: right;">
@@ -3544,6 +3596,22 @@ FILE: app/views/reports/_form.html.erb
     </div>
     <div class="form-group">
       <input type="text" placeholder="Daily notes..." name="report[placed_quantities_attributes][NEW_RECORD][notes]" class="w-full">
+    </div>
+  </div>
+</template>
+
+<%# MAESTRO: New Template for Attachments %>
+<template id="attachment-template">
+  <div class="gallery-card nested-fields" style="text-align: left;">
+    <div style="padding: 10px; background: #f9fafb; border-bottom: 1px solid #eee;">
+      <%# This inputs a single file per 'card' %>
+      <input type="file" name="report[report_attachments_attributes][NEW_RECORD][file]" class="form-control" style="width: 100%;">
+    </div>
+    <div style="padding: 10px;">
+      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Enter caption..." class="form-control" style="width: 100%;">
+      <div style="margin-top: 5px; text-align: right;">
+         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; font-size: 0.8rem;">Remove</button>
+      </div>
     </div>
   </div>
 </template>
@@ -4211,7 +4279,7 @@ FILE: app/views/reports/show.html.erb
               <% if attach.file.attached? %>
                 <% if attach.file.representable? %>
                   <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank" do %>
-                    <%= image_tag attach.file.representation(resize_to_limit: [300, 300]) %>
+                    <%= image_tag attach.file.representation(resize_to_limit: [600, 600]) %>
                   <% end %>
                 <% else %>
                   <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank", style: "text-decoration: none;" do %>
@@ -5486,15 +5554,6 @@ class InitSchema < ActiveRecord::Migration[7.1]
 end
 
 ================================================================================
-FILE: db/migrate/20260109030506_rename_inspection_entries_to_placed_quantities.rb
-================================================================================
-class RenameInspectionEntriesToPlacedQuantities < ActiveRecord::Migration[7.1]
-  def change
-    rename_table :placed_quantities, :placed_quantities
-  end
-end
-
-================================================================================
 FILE: db/migrate/20260109033513_create_spec_items.rb
 ================================================================================
 class CreateSpecItems < ActiveRecord::Migration[7.1]
@@ -5545,6 +5604,18 @@ class AddDivisionToSpecItems < ActiveRecord::Migration[7.1]
   end
 end
 
+
+================================================================================
+FILE: db/migrate/20260109180602_make_report_fields_optional.rb
+================================================================================
+# db/migrate/[TIMESTAMP]_make_report_fields_optional.rb
+class MakeReportFieldsOptional < ActiveRecord::Migration[7.1]
+  def change
+    # Allow these to be null for the "Draft" state
+    change_column_null :reports, :project_id, true
+    change_column_null :reports, :phase_id, true
+  end
+end
 
 ================================================================================
 FILE: db/seeds.rb

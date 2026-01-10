@@ -1,14 +1,22 @@
 class BidItem < ApplicationRecord
-  # 1. ASSOCIATIONS
-  # It connects to a Spec, but acts as a standalone if needed (optional)
-  belongs_to :spec_item, optional: true
+  # --- 1. ASSOCIATIONS ---
+  # The Bid Item belongs to the "Container" (Project) 
+  # and acts as a translator for the "Definition" (Spec Item)
+  belongs_to :project
+  belongs_to :spec_item 
   
   has_many :placed_quantities, dependent: :restrict_with_error
   
-  # 2. VALIDATIONS
+  # --- 2. VALIDATIONS ---
+  validates :code, presence: true
+  
+  # MAESTRO: This ensures a code (e.g. "P-401") is unique ONLY within this specific project.
+  # This allows Project A and Project B to both have an item called "P-401".
+  validates :code, uniqueness: { scope: :project_id, message: "already exists in this project" }
+  
   validate :checklist_questions_must_be_array
 
-  # 3. THE "TRAFFIC COP" (Smart Logic)
+  # --- 3. THE "TRAFFIC COP" (Smart Logic) ---
   # This determines which questions appear in the form
   def active_questions
     # A. If Bid Item has specific overrides, use them
@@ -21,7 +29,7 @@ class BidItem < ApplicationRecord
     []
   end
 
-  # 4. VIRTUAL ATTRIBUTES (For the Form)
+  # --- 4. VIRTUAL ATTRIBUTES (For the Form) ---
   # GETTER: Returns text for the textarea
   def questions_text
     active_questions.join("\n")

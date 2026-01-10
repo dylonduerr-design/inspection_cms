@@ -3,11 +3,7 @@ Rails.application.routes.draw do
   devise_for :users
   
   resources :reports do
-    # --- MOVED HERE ---
-    # This creates the URL: /reports/:report_id/checklist_entries
     resources :checklist_entries, only: [:create, :update] 
-    # ------------------
-
     member do
       post :submit_for_qc
       post :approve
@@ -16,11 +12,14 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :bid_items
+  # --- MAESTRO CHANGE: Nest Bid Items under Projects ---
+  resources :projects do
+    resources :bid_items # URL: /projects/1/bid_items/new
+  end
+  
   resources :phases
-  resources :projects
   
-  # (Removed the old standalone checklist_entries line from down here)
-  
+ 
+
   root "reports#index"
 end

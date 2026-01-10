@@ -385,11 +385,16 @@
            <div class="form-row" style="margin-bottom: 10px;">
              <div class="form-group" style="flex: 2;">
                <label class="text-muted-sm">Bid Item</label>
+               <%# MAESTRO CHANGE: Only show items for the current project %>
+               <% collection = report.project ? report.project.bid_items.order(:code) : [] %>
                <%= entry_form.select :bid_item_id, 
-                     BidItem.all.map { |bi| [bi.code + " - " + bi.description, bi.id, { 'data-questions': bi.active_questions.to_json }] }, 
+                     collection.map { |bi| [bi.code + " - " + bi.description, bi.id, { 'data-questions': bi.active_questions.to_json }] }, 
                      { prompt: "Select Item..." }, 
                      { class: "w-full", data: { action: "change->report-form#selectBidItem" } } 
                %>
+               <% if report.project.nil? %>
+                 <small style="color: red;">(Save Project to load items)</small>
+               <% end %>
              </div>
              <div class="form-group">
                <label class="text-muted-sm">Quantity</label>
@@ -605,10 +610,15 @@
         <label class="text-muted-sm">Bid Item</label>
         <select name="report[placed_quantities_attributes][NEW_RECORD][bid_item_id]" class="w-full" data-action="change->report-form#selectBidItem">
             <option value="">Select Item</option>
-            <% BidItem.all.each do |bi| %>
-              <option value="<%= bi.id %>" data-questions="<%= bi.active_questions.to_json %>">
-                <%= bi.code %> - <%= bi.description %>
-              </option>
+            <%# MAESTRO CHANGE: Load the Project's specific library %>
+            <% if report.project %>
+              <% report.project.bid_items.order(:code).each do |bi| %>
+                <option value="<%= bi.id %>" data-questions="<%= bi.active_questions.to_json %>">
+                  <%= bi.code %> - <%= bi.description %>
+                </option>
+              <% end %>
+            <% else %>
+              <option disabled>Please save Project first...</option>
             <% end %>
         </select>
       </div>

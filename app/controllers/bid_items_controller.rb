@@ -1,64 +1,58 @@
 class BidItemsController < ApplicationController
+  before_action :set_project
   before_action :set_bid_item, only: %i[ show edit update destroy ]
 
-  # GET /bid_items
+  # GET /projects/1/bid_items
   def index
-    # The Dashboard Logic: Sums quantities per item
-    @bid_items = BidItem.left_joins(:placed_quantities)
-                        .group(:id)
-                        .select("bid_items.*, COALESCE(SUM(placed_quantities.quantity), 0) as total_quantity")
-                        .order(:code)
+    # Only show items for THIS project
+    @bid_items = @project.bid_items.order(:code)
   end
 
-  # GET /bid_items/1
-  def show
-  end
-
-  # GET /bid_items/new
+  # GET /projects/1/bid_items/new
   def new
-    @bid_item = BidItem.new
+    @bid_item = @project.bid_items.build
   end
 
-  # GET /bid_items/1/edit
-  def edit
-  end
-
-  # POST /bid_items
+  # POST /projects/1/bid_items
   def create
-    @bid_item = BidItem.new(bid_item_params)
+    @bid_item = @project.bid_items.build(bid_item_params)
 
     if @bid_item.save
-      redirect_to bid_item_url(@bid_item), notice: "Bid item was successfully created."
+      redirect_to project_bid_items_path(@project), notice: "Bid item added to library."
     else
       render :new, status: :unprocessable_entity
     end
   end
 
-  # PATCH/PUT /bid_items/1
+  # GET /projects/1/bid_items/1/edit
+  def edit
+  end
+
+  # PATCH /projects/1/bid_items/1
   def update
     if @bid_item.update(bid_item_params)
-      redirect_to bid_item_url(@bid_item), notice: "Bid item was successfully updated."
+      redirect_to project_bid_items_path(@project), notice: "Bid item updated."
     else
       render :edit, status: :unprocessable_entity
     end
   end
 
-  # DELETE /bid_items/1
   def destroy
-    @bid_item.destroy!
-
-    redirect_to bid_items_url, notice: "Bid item was successfully destroyed."
+    @bid_item.destroy
+    redirect_to project_bid_items_path(@project), notice: "Bid item removed."
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_bid_item
-      @bid_item = BidItem.find(params[:id])
+    def set_project
+      @project = Project.find(params[:project_id])
     end
 
-    # Only allow a list of trusted parameters through.
-   def bid_item_params
-  # We permit :questions_text INSTEAD of :checklist_questions
-  params.require(:bid_item).permit(:code, :description, :unit, :questions_text)
- end
+    def set_bid_item
+      @bid_item = @project.bid_items.find(params[:id])
+    end
+
+    def bid_item_params
+      # We now require the spec_item_id as well
+      params.require(:bid_item).permit(:code, :description, :unit, :spec_item_id, :questions_text)
+    end
 end

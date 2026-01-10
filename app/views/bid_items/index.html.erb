@@ -1,39 +1,70 @@
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <h1>Master Quantity Dashboard</h1>
-  <div>
-    <%= link_to "New Bid item", new_bid_item_path, class: "button" %>
-    <%= link_to "Back to Reports", reports_path, style: "margin-left: 10px;" %>
+<div class="dashboard-container">
+  
+  <div class="dashboard-header">
+    <div>
+      <%# 1. Project-Aware Title %>
+      <h1>Library: <%= @project.name %></h1>
+      <p style="color: #666; margin: 0;">Contract: <%= @project.contract_number %></p>
+    </div>
+    
+    <div>
+      <%# 2. Project-Aware New Button %>
+      <%= link_to "+ New Item", new_project_bid_item_path(@project), class: "btn btn-primary" %>
+      
+      <%# 3. Back Button returns to Project Directory %>
+      <%= link_to "Back to Projects", projects_path, class: "btn btn-secondary", style: "margin-left: 10px;" %>
+    </div>
   </div>
-</div>
 
-<div style="border: 1px solid #ccc; border-radius: 5px; overflow: hidden;">
-  <table style="width: 100%; border-collapse: collapse;">
-    <thead style="background-color: #333; color: white;">
-      <tr>
-        <th style="padding: 10px; text-align: left;">Code</th>
-        <th style="padding: 10px; text-align: left;">Description</th>
-        <th style="padding: 10px; text-align: center;">Unit</th>
-        <th style="padding: 10px; text-align: right; background-color: #444;">Cumulative Total</th>
-        <th style="padding: 10px; text-align: center;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @bid_items.each do |bid_item| %>
-        <tr style="border-bottom: 1px solid #eee;">
-          <td style="padding: 10px;"><%= bid_item.code %></td>
-          <td style="padding: 10px;"><%= bid_item.description %></td>
-          <td style="padding: 10px; text-align: center;"><%= bid_item.unit %></td>
-          
-          <td style="padding: 10px; text-align: right; font-weight: bold; font-size: 1.1em; color: #007bff;">
-            <%= number_with_precision(bid_item.total_quantity, precision: 2) %>
-          </td>
-
-          <td style="padding: 10px; text-align: center;">
-            <%= link_to "Show", bid_item %> |
-            <%= link_to "Edit", edit_bid_item_path(bid_item) %>
-          </td>
+  <div class="table-card">
+    <table class="modern-table dashboard-table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Description</th>
+          <th class="text-center">Unit</th>
+          <th>Linked Spec</th>
+          <th class="text-right">Actions</th>
         </tr>
-      <% end %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <% if @bid_items.any? %>
+          <% @bid_items.each do |bid_item| %>
+            <tr>
+              <td style="font-weight: bold; color: var(--primary);">
+                <%= bid_item.code %>
+              </td>
+              <td><%= bid_item.description %></td>
+              <td class="text-center"><%= bid_item.unit %></td>
+              
+              <%# 4. Show the Universal Spec Link %>
+              <td>
+                <% if bid_item.spec_item %>
+                  <span style="background: #eff6ff; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;">
+                    <%= bid_item.spec_item.code %>
+                  </span>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+
+              <td class="text-right">
+                <%# 5. Project-Aware Edit/Delete Links %>
+                <%= link_to "Edit", edit_project_bid_item_path(@project, bid_item), class: "link-primary", style: "margin-right: 10px;" %>
+                <%= button_to "Delete", project_bid_item_path(@project, bid_item), method: :delete, class: "btn-clear", style: "color: red; display: inline; padding: 0;", form: {style: "display:inline"} %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #666;">
+              No bid items in this library yet.<br>
+              Click "+ New Item" to add codes from your contract.
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
 </div>

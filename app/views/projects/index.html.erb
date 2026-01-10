@@ -1,14 +1,53 @@
-<p style="color: green"><%= notice %></p>
+<div class="dashboard-container">
+  
+  <%# --- HEADER --- %>
+  <div class="dashboard-header">
+    <h1>Projects Directory</h1>
+    <%= link_to "New Project", new_project_path, class: "btn btn-primary" %>
+  </div>
 
-<h1>Projects</h1>
+  <%# --- TABLE CARD --- %>
+  <div class="table-card">
+    <table class="modern-table dashboard-table">
+      <thead>
+        <tr>
+          <th>Project Name</th>
+          <th>Contract #</th>
+          <th>Manager (PM)</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @projects.any? %>
+          <% @projects.each do |project| %>
+            <tr>
+              <td style="font-weight: 600; color: var(--text-main);">
+                <%= project.name %>
+              </td>
+              <td><%= project.contract_number.presence || "-" %></td>
+              <td><%= project.project_manager.presence || "-" %></td>
+              
+              <td class="text-right">
+                 <%# --- THE NEW LIBRARY BUTTON --- %>
+                 <%= link_to "Manage Library", project_bid_items_path(project), 
+                     class: "btn btn-secondary", 
+                     style: "font-size: 0.8rem; padding: 5px 12px; margin-right: 15px;" %>
+                 
+                 <%# Standard Actions %>
+                 <%= link_to "Edit", edit_project_path(project), class: "link-primary", style: "margin-right: 10px;" %>
+                 <%= link_to "Show", project, class: "link-primary" %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 40px; color: #666;">
+              No projects found. Create one to get started!
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
 
-<div id="projects">
-  <% @projects.each do |project| %>
-    <%= render project %>
-    <p>
-      <%= link_to "Show this project", project %>
-    </p>
-  <% end %>
 </div>
-
-<%= link_to "New project", new_project_path %>

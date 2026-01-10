@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_09_235950) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -60,6 +60,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "spec_item_id", null: false
+    t.bigint "project_id"
+    t.index ["project_id"], name: "index_bid_items_on_project_id"
     t.index ["spec_item_id"], name: "index_bid_items_on_spec_item_id"
   end
 
@@ -99,18 +101,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
     t.index ["report_id"], name: "index_equipment_entries_on_report_id"
   end
 
-  create_table "inspection_entries", force: :cascade do |t|
-    t.bigint "report_id", null: false
-    t.bigint "bid_item_id", null: false
-    t.decimal "quantity"
-    t.text "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.jsonb "checklist_answers", default: {}
-    t.index ["bid_item_id"], name: "index_inspection_entries_on_bid_item_id"
-    t.index ["report_id"], name: "index_inspection_entries_on_report_id"
-  end
-
   create_table "phases", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -133,6 +123,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "contract_number"
+    t.string "project_manager"
+    t.string "construction_manager"
+    t.integer "contract_days"
+    t.date "contract_start_date"
   end
 
   create_table "qa_entries", force: :cascade do |t|
@@ -232,6 +227,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_180602) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "activity_logs", "reports"
   add_foreign_key "activity_logs", "users"
+  add_foreign_key "bid_items", "projects"
   add_foreign_key "bid_items", "spec_items"
   add_foreign_key "checklist_entries", "reports"
   add_foreign_key "checklist_entries", "spec_items"
