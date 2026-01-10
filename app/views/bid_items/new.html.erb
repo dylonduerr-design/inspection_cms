@@ -1,9 +1,11 @@
-<h1>New bid item</h1>
+<h1>New Bid Item for <%= @project.name %></h1>
 
+<%# The form is already set up correctly with [@project, @bid_item] %>
 <%= render "form", bid_item: @bid_item %>
 
 <br>
 
 <div>
-  <%= link_to "Back to bid items", bid_items_path %>
+  <%# FIX: Use project_bid_items_path(@project) instead of bid_items_path %>
+  <%= link_to "Back to Library", project_bid_items_path(@project) %>
 </div>

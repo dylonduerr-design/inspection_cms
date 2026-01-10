@@ -3,7 +3,12 @@
   <%# --- HEADER --- %>
   <div class="dashboard-header">
     <h1>Projects Directory</h1>
-    <%= link_to "New Project", new_project_path, class: "btn btn-primary" %>
+    <div style="display: flex; gap: 10px;">
+      <%= link_to "New Project", new_project_path, class: "btn btn-primary" %>
+      
+      <%# MAESTRO: The Escape Hatch %>
+      <%= link_to "Back to Dashboard", root_path, class: "btn btn-secondary" %>
+    </div>
   </div>
 
   <%# --- TABLE CARD --- %>
