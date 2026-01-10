@@ -39,17 +39,19 @@ class ReportsController < ApplicationController
   # GET /reports/new
   def new
     # --- MAESTRO: DRAFT PATTERN IMPLEMENTATION ---
-    # 1. Create the "Shell" Record immediately
-    # We bypass validations (validate: false) so we can get an ID right away.
-    # This allows checklists and attachments to function immediately.
+    # 1. Initialize with defaults
     @report = current_user.reports.build(status: :creating)
     
+    # 2. Pre-fill Project if passed from Dashboard
+    if params[:project_id].present?
+      project = Project.find_by(id: params[:project_id])
+      @report.project = project if project
+    end
+
+    # 3. Save Shell Record (validate: false)
     if @report.save(validate: false)
-      # 2. Redirect straight to the Edit form
-      # The user won't know the difference, but technically they are editing an existing record.
       redirect_to edit_report_path(@report)
     else
-      # Fallback in unlikely event save fails (e.g. database down)
       redirect_to reports_path, alert: "Could not initialize new report."
     end
   end

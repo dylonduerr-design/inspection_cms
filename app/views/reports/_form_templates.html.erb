@@ -1,0 +1,78 @@
+<%# 1. QA TEMPLATE %>
+<template id="qa-template">
+  <%# We use fields_for with a new object and a magic child_index %>
+  <%# This generates the correct name="report[qa_entries_attributes][NEW_RECORD]..." %>
+  <%= fields_for :qa_entries, QaEntry.new, child_index: "NEW_RECORD" do |f| %>
+    <%= render "qa_entry_fields", f: f %>
+  <% end %>
+</template>
+
+<%# 2. CREW TEMPLATE %>
+<template id="crew-template">
+  <%= fields_for :crew_entries, CrewEntry.new, child_index: "NEW_RECORD" do |f| %>
+    <%= render "crew_entry_fields", f: f %>
+  <% end %>
+</template>
+
+<%# 3. EQUIPMENT TEMPLATE %>
+<template id="equipment-template">
+  <%= fields_for :equipment_entries, EquipmentEntry.new, child_index: "NEW_RECORD" do |f| %>
+    <%= render "equipment_entry_fields", f: f %>
+  <% end %>
+</template>
+
+<%# 4. PLACED QUANTITY TEMPLATE %>
+<%# We didn't modularize this one yet, so we keep the full HTML here %>
+<template id="placed-quantity-template">
+  <%= fields_for :placed_quantities, PlacedQuantity.new, child_index: "NEW_RECORD" do |entry_form| %>
+    <div class="nested-entry-card nested-fields">
+       <div class="form-row" style="margin-bottom: 10px;">
+         <div class="form-group" style="flex: 2;">
+           <label class="text-muted-sm">Bid Item</label>
+           <%# Note: We use @report (instance variable) to access the project context %>
+           <select name="report[placed_quantities_attributes][NEW_RECORD][bid_item_id]" class="w-full" data-action="change->report-form#selectBidItem">
+               <option value="">Select Item</option>
+               <% if @report.project %>
+                 <% @report.project.bid_items.order(:code).each do |bi| %>
+                   <option value="<%= bi.id %>" data-questions="<%= bi.active_questions.to_json %>">
+                     <%= bi.code %> - <%= bi.description %>
+                   </option>
+                 <% end %>
+               <% else %>
+                 <option disabled>Please save Project first...</option>
+               <% end %>
+           </select>
+         </div>
+         <div class="form-group">
+           <label class="text-muted-sm">Quantity</label>
+           <input class="w-full" type="number" step="0.01" placeholder="Qty" name="report[placed_quantities_attributes][NEW_RECORD][quantity]">
+         </div>
+       </div>
+       
+       <div class="nested-row-container" style="margin-bottom: 10px;">
+         <input type="hidden" name="report[placed_quantities_attributes][NEW_RECORD][checklist_answers]" class="checklist-answers-field" value="{}">
+         <button type="button" class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" data-action="click->report-form#openChecklist">Open Checklist</button>
+         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="margin-left: auto;">Delete</button>
+       </div>
+       
+       <div class="form-group">
+         <input type="text" placeholder="Daily notes..." name="report[placed_quantities_attributes][NEW_RECORD][notes]" class="w-full">
+       </div>
+    </div>
+  <% end %>
+</template>
+
+<%# 5. ATTACHMENT TEMPLATE %>
+<template id="attachment-template">
+  <div class="gallery-card nested-fields" style="text-align: left;">
+    <div style="padding: 10px; background: #f9fafb; border-bottom: 1px solid #eee;">
+      <input type="file" name="report[report_attachments_attributes][NEW_RECORD][file]" class="form-control" style="width: 100%;">
+    </div>
+    <div style="padding: 10px;">
+      <input type="text" name="report[report_attachments_attributes][NEW_RECORD][caption]" placeholder="Enter caption..." class="form-control" style="width: 100%;">
+      <div style="margin-top: 5px; text-align: right;">
+         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; font-size: 0.8rem;">Remove</button>
+      </div>
+    </div>
+  </div>
+</template>

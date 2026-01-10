@@ -1,0 +1,27 @@
+<div class="nested-entry-card nested-fields" style="margin-bottom: 10px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+  <div class="form-row">
+    <div class="form-group" style="flex: 2;">
+      <label class="text-muted-sm">Contractor</label>
+      <%= f.text_field :contractor, placeholder: "Contractor", class: "auto-contractor", style: "width: 100%;" %>
+    </div>
+    <div class="form-group" style="flex: 3;">
+      <label class="text-muted-sm">Make/Model</label>
+      <%= f.text_field :make_model, placeholder: "Description", style: "width: 100%;" %>
+    </div>
+    <div class="form-group" style="flex: 0.5;">
+      <label class="text-muted-sm">Qty</label>
+      <%= f.number_field :quantity, placeholder: "1", style: "width: 100%;" %>
+    </div>
+    <div class="form-group" style="flex: 1;">
+      <label class="text-muted-sm">Hours</label>
+      <%= f.number_field :hours, step: 0.5, placeholder: "Hrs", style: "width: 100%;" %>
+    </div>
+    
+    <div class="form-group" style="display: flex; align-items: flex-end;">
+      <% if f.object&.persisted? %>
+        <div style="display:none;"><%= f.check_box :_destroy %></div>
+        <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; margin-bottom: 10px;">Delete</button>
+      <% end %>
+    </div>
+  </div>
+</div>
