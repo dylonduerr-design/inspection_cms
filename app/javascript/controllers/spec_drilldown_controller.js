@@ -1,10 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "viewDivisions", "viewSpecs", "viewForm", "specListContainer", "modalTitle"]
+  static targets = ["modal", "viewDivisions", "viewSpecs", "viewForm", "specListContainer", "modalTitle", "checklistFormPlaceholder"]
+  // NEW: Robustly capture the ID passed from the view
+  static values = { reportId: String }
 
   connect() {
-    // Parse the big JSON blob of specs
+    // Parse the big JSON blob of specs once
     const dataScript = document.getElementById("spec-data-store");
     if (dataScript) {
       this.allSpecs = JSON.parse(dataScript.textContent);
@@ -35,23 +37,24 @@ export default class extends Controller {
   }
 
   selectDivision(event) {
-    const divisionName = event.target.dataset.division;
+    const divisionName = event.currentTarget.dataset.division;
     
     // Filter specs by division
     const specs = this.allSpecs.filter(s => s.division === divisionName);
-    
+
     // Render list
     let html = "";
     specs.forEach(spec => {
       html += `
         <button type="button" class="list-item" 
+                style="width:100%; text-align:left; padding:12px; margin-bottom:8px; background:white; border:1px solid #ddd; border-radius:6px; cursor:pointer;"
                 data-action="click->spec-drilldown#selectSpec" 
                 data-id="${spec.id}">
-          <strong>${spec.code}</strong> - ${spec.description}
+          <strong style="color:#2563eb;">${spec.code}</strong><br>
+          <span style="font-size:0.9em; color:#666;">${spec.description}</span>
         </button>
       `;
     });
-    
     this.specListContainerTarget.innerHTML = html;
     
     // Switch Views
@@ -61,10 +64,10 @@ export default class extends Controller {
   }
 
   selectSpec(event) {
-    const specId = parseInt(event.target.closest("button").dataset.id);
+    const specId = parseInt(event.currentTarget.dataset.id);
     this.currentSpec = this.allSpecs.find(s => s.id === specId);
     
-    // UPDATED: Pass empty object {} as second argument
+    // Pass empty object {} for new checklists
     this.renderChecklistForm(this.currentSpec.checklist_questions, {});
     
     this.viewSpecsTarget.style.display = "none";
@@ -72,15 +75,15 @@ export default class extends Controller {
     this.modalTitleTarget.innerText = `Checklist: ${this.currentSpec.code}`;
   }
 
-  // NEW: Handle clicking the "Edit" button on an existing card
+  // Handle clicking the "Edit" button on an existing card
   editSpec(event) {
     const card = event.target.closest(".gallery-card");
     const specId = parseInt(card.dataset.specId);
     const savedAnswers = JSON.parse(card.dataset.answers || "{}");
-    
+
     // Find the full spec object from our data store
     this.currentSpec = this.allSpecs.find(s => s.id === specId);
-    
+
     // Open the modal directly to the form, passing the saved answers
     this.modalTarget.showModal();
     this.renderChecklistForm(this.currentSpec.checklist_questions, savedAnswers);
@@ -92,24 +95,23 @@ export default class extends Controller {
   }
 
   // --- FORM RENDERING ---
-  // UPDATED: Now accepts 'savedAnswers' argument
   renderChecklistForm(questions, savedAnswers = {}) {
-    const container = document.getElementById("checklist-form-placeholder");
-    
     let html = `<div style="padding: 10px;">`;
     html += `<p style="margin-bottom: 20px;"><strong>${questions.length} items to check:</strong></p>`;
     
     questions.forEach((q) => {
-      // Helper to check if this radio should be selected
       const isChecked = (val) => savedAnswers[q] === val ? "checked" : "";
+      
+      // Sanitized key for the name attribute
+      const safeKey = q.replace(/"/g, '&quot;');
 
       html += `
         <div class="checklist-item" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
           <p style="margin: 0 0 5px 0;">${q}</p>
           <div style="display: flex; gap: 15px;">
-            <label><input type="radio" name="answers[${q}]" value="Yes" ${isChecked("Yes")}> Yes</label>
-            <label><input type="radio" name="answers[${q}]" value="No" ${isChecked("No")}> No</label>
-            <label><input type="radio" name="answers[${q}]" value="N/A" ${isChecked("N/A")}> N/A</label>
+            <label><input type="radio" name="answers[${safeKey}]" value="Yes" ${isChecked("Yes")}> Yes</label>
+            <label><input type="radio" name="answers[${safeKey}]" value="No" ${isChecked("No")}> No</label>
+            <label><input type="radio" name="answers[${safeKey}]" value="N/A" ${isChecked("N/A")}> N/A</label>
           </div>
         </div>
       `;
@@ -122,7 +124,7 @@ export default class extends Controller {
     `;
     html += `</div>`;
     
-    container.innerHTML = html;
+    this.checklistFormPlaceholderTarget.innerHTML = html;
   }
   
   saveChecklist(event) {
@@ -132,21 +134,25 @@ export default class extends Controller {
 
     // 1. Harvest Answers
     const answers = {};
-    const formContainer = document.getElementById("checklist-form-placeholder");
-    const radios = formContainer.querySelectorAll('input[type="radio"]:checked');
+    const radios = this.checklistFormPlaceholderTarget.querySelectorAll('input[type="radio"]:checked');
     
     radios.forEach(radio => {
-      // name="answers[Does it work?]" -> key="Does it work?"
-      const key = radio.name.match(/\[(.*?)\]/)[1]; 
-      answers[key] = radio.value;
+      // Extract the original question key from the name attribute
+      const keyMatch = radio.name.match(/answers\[(.*?)\]/);
+      if (keyMatch) {
+        // We decode HTML entities if necessary, but usually the raw string works here
+        answers[keyMatch[1]] = radio.value;
+      }
     });
 
-    // 2. Identify Context
-    // We need the Report ID. We can grab it from the main form action URL or a data attribute.
-    const reportId = document.getElementById("report-form").action.split("/").pop(); // Simple URL parser
+    // 2. Identify Context (ROBUST FIX)
+    if (!this.reportIdValue) {
+       alert("Error: Missing Report ID. Cannot save.");
+       return;
+    }
     
     // 3. Send to Server
-    fetch(`/reports/${reportId}/checklist_entries`, {
+    fetch(`/reports/${this.reportIdValue}/checklist_entries`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -160,7 +166,7 @@ export default class extends Controller {
     .then(response => response.json())
     .then(data => {
       if (data.status === "success") {
-        this.addBadgeToUI(data, answers); // Pass answers to update the UI data attribute
+        this.addBadgeToUI(data, answers); 
         this.closeModal();
       } else {
         alert("Error saving: " + data.message);
@@ -178,7 +184,7 @@ export default class extends Controller {
   addBadgeToUI(data, newAnswers) {
     const list = document.getElementById("active-checklists-list");
     
-    // Remove "No checklists" message if it exists
+    // Remove "No checklists" message
     const emptyMsg = list.querySelector(".text-muted");
     if (emptyMsg) emptyMsg.remove();
 
@@ -186,16 +192,15 @@ export default class extends Controller {
     let card = list.querySelector(`[data-spec-code="${data.spec_code}"]`);
     
     if (card) {
-      // Update existing card's data-answers
+      // Update existing card
       card.dataset.answers = JSON.stringify(newAnswers);
-      // Flash effect to show update
-      card.style.backgroundColor = "#ecfdf5";
+      card.style.backgroundColor = "#ecfdf5"; // Flash Green
       setTimeout(() => card.style.backgroundColor = "", 1000);
     } else {
-      // Create new card HTML
+      // Create new card
       const html = `
         <div class="gallery-card" 
-             style="padding: 15px; text-align: left;" 
+             style="padding: 15px; text-align: left;"
              data-spec-code="${data.spec_code}"
              data-spec-id="${data.id}" 
              data-answers='${JSON.stringify(newAnswers)}'>
@@ -211,7 +216,7 @@ export default class extends Controller {
           </button>
         </div>
       `;
-      // Append to the grid
+      // Ensure grid class exists
       if (!list.classList.contains("gallery-grid")) list.classList.add("gallery-grid");
       list.insertAdjacentHTML("beforeend", html);
     }

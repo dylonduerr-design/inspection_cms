@@ -1,4 +1,4 @@
-class InspectionEntriesController < ApplicationController
+class PlacedQuantitiesController < ApplicationController
   before_action :set_placed_quantity, only: %i[ show edit update destroy ]
 
   # GET /placed_quantities or /placed_quantities.json
@@ -50,7 +50,6 @@ class InspectionEntriesController < ApplicationController
   # DELETE /placed_quantities/1 or /placed_quantities/1.json
   def destroy
     @placed_quantity.destroy!
-
     respond_to do |format|
       format.html { redirect_to placed_quantities_path, notice: "Inspection entry was successfully destroyed.", status: :see_other }
       format.json { head :no_content }

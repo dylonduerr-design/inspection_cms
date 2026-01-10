@@ -1,5 +1,7 @@
 <%# app/views/reports/_spec_check_card.html.erb %>
-<div class="form-card" data-controller="spec-drilldown">
+<div class="form-card" 
+     data-controller="spec-drilldown" 
+     data-spec-drilldown-report-id-value="<%= report.id %>">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2>Specification Checklists</h2>
     <button type="button" 
@@ -88,7 +90,7 @@
       <%# VIEW C: CHECKLIST FORM (Populated by JS) %>
       <div data-spec-drilldown-target="viewForm" style="display: none;">
          <button type="button" class="btn-clear" style="margin-bottom: 15px;" data-action="click->spec-drilldown#showSpecs">← Back to Specs</button>
-         <div id="checklist-form-placeholder">
+         <div id="checklist-form-placeholder" data-spec-drilldown-target="checklistFormPlaceholder">
            <%# JavaScript injects the radio buttons here %>
          </div>
       </div>

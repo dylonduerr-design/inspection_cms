@@ -1,4 +1,4 @@
-INSPECTION CMS CODEBASE EXPORT - 2026-01-09 15:37:56 -0800
+INSPECTION CMS CODEBASE EXPORT - 2026-01-09 16:28:52 -0800
 
 
 ================================================================================
@@ -615,70 +615,63 @@ end
 FILE: app/controllers/bid_items_controller.rb
 ================================================================================
 class BidItemsController < ApplicationController
+  before_action :set_project
   before_action :set_bid_item, only: %i[ show edit update destroy ]
 
-  # GET /bid_items
+  # GET /projects/1/bid_items
   def index
-    # The Dashboard Logic: Sums quantities per item
-    @bid_items = BidItem.left_joins(:placed_quantities)
-                        .group(:id)
-                        .select("bid_items.*, COALESCE(SUM(placed_quantities.quantity), 0) as total_quantity")
-                        .order(:code)
+    # Only show items for THIS project
+    @bid_items = @project.bid_items.order(:code)
   end
 
-  # GET /bid_items/1
-  def show
-  end
-
-  # GET /bid_items/new
+  # GET /projects/1/bid_items/new
   def new
-    @bid_item = BidItem.new
+    @bid_item = @project.bid_items.build
   end
 
-  # GET /bid_items/1/edit
-  def edit
-  end
-
-  # POST /bid_items
+  # POST /projects/1/bid_items
   def create
-    @bid_item = BidItem.new(bid_item_params)
+    @bid_item = @project.bid_items.build(bid_item_params)
 
     if @bid_item.save
-      redirect_to bid_item_url(@bid_item), notice: "Bid item was successfully created."
+      redirect_to project_bid_items_path(@project), notice: "Bid item added to library."
     else
       render :new, status: :unprocessable_entity
     end
   end
 
-  # PATCH/PUT /bid_items/1
+  # GET /projects/1/bid_items/1/edit
+  def edit
+  end
+
+  # PATCH /projects/1/bid_items/1
   def update
     if @bid_item.update(bid_item_params)
-      redirect_to bid_item_url(@bid_item), notice: "Bid item was successfully updated."
+      redirect_to project_bid_items_path(@project), notice: "Bid item updated."
     else
       render :edit, status: :unprocessable_entity
     end
   end
 
-  # DELETE /bid_items/1
   def destroy
-    @bid_item.destroy!
-
-    redirect_to bid_items_url, notice: "Bid item was successfully destroyed."
+    @bid_item.destroy
+    redirect_to project_bid_items_path(@project), notice: "Bid item removed."
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_bid_item
-      @bid_item = BidItem.find(params[:id])
+    def set_project
+      @project = Project.find(params[:project_id])
     end
 
-    # Only allow a list of trusted parameters through.
-   def bid_item_params
-  # We permit :questions_text INSTEAD of :checklist_questions
-  params.require(:bid_item).permit(:code, :description, :unit, :questions_text)
- end
-end
+    def set_bid_item
+      @bid_item = @project.bid_items.find(params[:id])
+    end
 
+    def bid_item_params
+      # We now require the spec_item_id as well
+      params.require(:bid_item).permit(:code, :description, :unit, :spec_item_id, :questions_text)
+    end
+end
 
 ================================================================================
 FILE: app/controllers/checklist_entries_controller.rb
@@ -1814,16 +1807,24 @@ end
 FILE: app/models/bid_item.rb
 ================================================================================
 class BidItem < ApplicationRecord
-  # 1. ASSOCIATIONS
-  # It connects to a Spec, but acts as a standalone if needed (optional)
-  belongs_to :spec_item, optional: true
+  # --- 1. ASSOCIATIONS ---
+  # The Bid Item belongs to the "Container" (Project) 
+  # and acts as a translator for the "Definition" (Spec Item)
+  belongs_to :project
+  belongs_to :spec_item 
   
   has_many :placed_quantities, dependent: :restrict_with_error
   
-  # 2. VALIDATIONS
+  # --- 2. VALIDATIONS ---
+  validates :code, presence: true
+  
+  # MAESTRO: This ensures a code (e.g. "P-401") is unique ONLY within this specific project.
+  # This allows Project A and Project B to both have an item called "P-401".
+  validates :code, uniqueness: { scope: :project_id, message: "already exists in this project" }
+  
   validate :checklist_questions_must_be_array
 
-  # 3. THE "TRAFFIC COP" (Smart Logic)
+  # --- 3. THE "TRAFFIC COP" (Smart Logic) ---
   # This determines which questions appear in the form
   def active_questions
     # A. If Bid Item has specific overrides, use them
@@ -1836,7 +1837,7 @@ class BidItem < ApplicationRecord
     []
   end
 
-  # 4. VIRTUAL ATTRIBUTES (For the Form)
+  # --- 4. VIRTUAL ATTRIBUTES (For the Form) ---
   # GETTER: Returns text for the textarea
   def questions_text
     active_questions.join("\n")
@@ -1928,8 +1929,18 @@ end
 FILE: app/models/project.rb
 ================================================================================
 class Project < ApplicationRecord
+  # --- 1. Associations ---
+  # The Project acts as the "Library" for this specific contract
+  has_many :bid_items, dependent: :destroy
+  
+  # A "Shortcut" to see which Universal Specs are being used on this job
+  has_many :spec_items, through: :bid_items
+  
+  # --- 2. Validations ---
+  validates :name, presence: true
+  # We validate the new header fields to ensure data quality
+  validates :contract_number, presence: true
 end
-
 
 ================================================================================
 FILE: app/models/qa_entry.rb
@@ -2348,49 +2359,60 @@ FILE: app/views/bid_items/_bid_item.html.erb
 ================================================================================
 FILE: app/views/bid_items/_form.html.erb
 ================================================================================
-<%= form_with(model: bid_item, class: "contents") do |form| %>
+<%# The form now takes an array [@project, bid_item] to build the correct nested URL %>
+<%= form_with(model: [@project, bid_item], class: "contents") do |form| %>
+  
   <% if bid_item.errors.any? %>
-    <div class="error-explanation" style="background-color: #fef2f2; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
-      <h2 style="font-weight: bold;"><%= pluralize(bid_item.errors.count, "error") %> prohibited this bid_item from being saved:</h2>
-      <ul style="list-style: disc; margin-left: 1.5rem;">
-        <% bid_item.errors.each do |error| %>
-          <li><%= error.full_message %></li>
-        <% end %>
-      </ul>
+    <div class="error-explanation">
+      <h2><%= pluralize(bid_item.errors.count, "error") %> prohibited saving:</h2>
+      <ul><% bid_item.errors.each do |error| %><li><%= error.full_message %></li><% end %></ul>
     </div>
   <% end %>
 
   <div class="form-card" style="max-width: 600px; margin: 0 auto;">
     
-    <div style="margin-bottom: 15px;">
-      <%= form.label :code, style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
-      <%= form.text_field :code, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+    <div style="margin-bottom: 20px; background: #f9fafb; padding: 10px; border-radius: 6px;">
+      <strong>Project:</strong> <%= @project.name %>
     </div>
 
-    <div style="margin-bottom: 15px;">
-      <%= form.label :description, style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
-      <%= form.text_field :description, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+    <div class="form-group">
+      <%= form.label :code, "Project Item Code" %>
+      <%= form.text_field :code, placeholder: "e.g. CD-12 or P-401" %>
+      <small class="text-muted">This is the code used in the contract documents.</small>
     </div>
 
-    <div style="margin-bottom: 15px;">
-      <%= form.label :unit, style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
-      <%= form.text_field :unit, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+    <div class="form-group">
+      <%= form.label :spec_item_id, "Link to FAA Specification (Universal)" %>
+      <%# This is the 'Rosetta Stone' link %>
+      <%= form.collection_select :spec_item_id, SpecItem.all.order(:code), :id, :description, { prompt: "Select FAA Spec..." }, { class: "form-control" } %>
+    </div>
+
+    <div class="form-group">
+      <%= form.label :description, "Item Description" %>
+      <%= form.text_field :description %>
+    </div>
+
+    <div class="form-group">
+      <%= form.label :unit %>
+      <%= form.text_field :unit, placeholder: "e.g. SY, CY, EA" %>
     </div>
 
     <hr style="margin: 20px 0;">
 
-    <%# --- THE NEW CHECKLIST FIELD --- %>
-    <div style="margin-bottom: 15px;">
-      <%= form.label :questions_text, "Checklist Questions", style: "display: block; font-weight: bold; margin-bottom: 5px;" %>
+    <div class="form-group">
+      <%= form.label :questions_text, "Override Checklist (Optional)" %>
       <div style="font-size: 0.85rem; color: #666; margin-bottom: 5px;">
-        <em>Enter one question per line. These will appear in the pop-up modal on reports.</em>
+        <em>Leave blank to use the standard FAA Spec checklist.</em>
       </div>
-      <%# We use the virtual attribute :questions_text here %>
-      <%= form.text_area :questions_text, rows: 8, style: "width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;", placeholder: "Is the subgrade compacted?\nIs the moisture content correct?\nPhotos taken?" %>
+      <%= form.text_area :questions_text, rows: 5 %>
     </div>
 
     <div style="margin-top: 20px;">
-      <%= form.submit "Save Bid Item", class: "btn btn-primary", style: "width: 100%;" %>
+      <%= form.submit "Save to Project Library", class: "btn btn-primary", style: "width: 100%;" %>
+    </div>
+    
+    <div style="text-align: center; margin-top: 15px;">
+       <%= link_to "Cancel", project_bid_items_path(@project) %>
     </div>
 
   </div>
@@ -2414,44 +2436,75 @@ FILE: app/views/bid_items/edit.html.erb
 ================================================================================
 FILE: app/views/bid_items/index.html.erb
 ================================================================================
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <h1>Master Quantity Dashboard</h1>
-  <div>
-    <%= link_to "New Bid item", new_bid_item_path, class: "button" %>
-    <%= link_to "Back to Reports", reports_path, style: "margin-left: 10px;" %>
+<div class="dashboard-container">
+  
+  <div class="dashboard-header">
+    <div>
+      <%# 1. Project-Aware Title %>
+      <h1>Library: <%= @project.name %></h1>
+      <p style="color: #666; margin: 0;">Contract: <%= @project.contract_number %></p>
+    </div>
+    
+    <div>
+      <%# 2. Project-Aware New Button %>
+      <%= link_to "+ New Item", new_project_bid_item_path(@project), class: "btn btn-primary" %>
+      
+      <%# 3. Back Button returns to Project Directory %>
+      <%= link_to "Back to Projects", projects_path, class: "btn btn-secondary", style: "margin-left: 10px;" %>
+    </div>
   </div>
-</div>
 
-<div style="border: 1px solid #ccc; border-radius: 5px; overflow: hidden;">
-  <table style="width: 100%; border-collapse: collapse;">
-    <thead style="background-color: #333; color: white;">
-      <tr>
-        <th style="padding: 10px; text-align: left;">Code</th>
-        <th style="padding: 10px; text-align: left;">Description</th>
-        <th style="padding: 10px; text-align: center;">Unit</th>
-        <th style="padding: 10px; text-align: right; background-color: #444;">Cumulative Total</th>
-        <th style="padding: 10px; text-align: center;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @bid_items.each do |bid_item| %>
-        <tr style="border-bottom: 1px solid #eee;">
-          <td style="padding: 10px;"><%= bid_item.code %></td>
-          <td style="padding: 10px;"><%= bid_item.description %></td>
-          <td style="padding: 10px; text-align: center;"><%= bid_item.unit %></td>
-          
-          <td style="padding: 10px; text-align: right; font-weight: bold; font-size: 1.1em; color: #007bff;">
-            <%= number_with_precision(bid_item.total_quantity, precision: 2) %>
-          </td>
-
-          <td style="padding: 10px; text-align: center;">
-            <%= link_to "Show", bid_item %> |
-            <%= link_to "Edit", edit_bid_item_path(bid_item) %>
-          </td>
+  <div class="table-card">
+    <table class="modern-table dashboard-table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Description</th>
+          <th class="text-center">Unit</th>
+          <th>Linked Spec</th>
+          <th class="text-right">Actions</th>
         </tr>
-      <% end %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <% if @bid_items.any? %>
+          <% @bid_items.each do |bid_item| %>
+            <tr>
+              <td style="font-weight: bold; color: var(--primary);">
+                <%= bid_item.code %>
+              </td>
+              <td><%= bid_item.description %></td>
+              <td class="text-center"><%= bid_item.unit %></td>
+              
+              <%# 4. Show the Universal Spec Link %>
+              <td>
+                <% if bid_item.spec_item %>
+                  <span style="background: #eff6ff; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;">
+                    <%= bid_item.spec_item.code %>
+                  </span>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+
+              <td class="text-right">
+                <%# 5. Project-Aware Edit/Delete Links %>
+                <%= link_to "Edit", edit_project_bid_item_path(@project, bid_item), class: "link-primary", style: "margin-right: 10px;" %>
+                <%= button_to "Delete", project_bid_item_path(@project, bid_item), method: :delete, class: "btn-clear", style: "color: red; display: inline; padding: 0;", form: {style: "display:inline"} %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #666;">
+              No bid items in this library yet.<br>
+              Click "+ New Item" to add codes from your contract.
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
 </div>
 
 ================================================================================
@@ -2868,11 +2921,10 @@ FILE: app/views/placed_quantities/show.html.erb
 ================================================================================
 FILE: app/views/projects/_form.html.erb
 ================================================================================
-<%= form_with(model: project) do |form| %>
+<%= form_with(model: project, class: "contents") do |form| %>
   <% if project.errors.any? %>
-    <div style="color: red">
+    <div class="error-explanation">
       <h2><%= pluralize(project.errors.count, "error") %> prohibited this project from being saved:</h2>
-
       <ul>
         <% project.errors.each do |error| %>
           <li><%= error.full_message %></li>
@@ -2881,16 +2933,47 @@ FILE: app/views/projects/_form.html.erb
     </div>
   <% end %>
 
-  <div>
-    <%= form.label :name, style: "display: block" %>
-    <%= form.text_field :name %>
-  </div>
+  <div class="form-card">
+    <h2 style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">Project Details</h2>
 
-  <div>
-    <%= form.submit %>
+    <div class="form-row">
+      <div class="form-group full-width">
+        <%= form.label :name, "Project Name" %>
+        <%= form.text_field :name, placeholder: "e.g. Runway 1R Rehabilitation" %>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= form.label :contract_number %>
+        <%= form.text_field :contract_number, placeholder: "e.g. 8983.61" %>
+      </div>
+      <div class="form-group">
+        <%= form.label :contract_days, "Contract Duration (Days)" %>
+        <%= form.number_field :contract_days %>
+      </div>
+      <div class="form-group">
+        <%= form.label :contract_start_date %>
+        <%= form.date_field :contract_start_date %>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= form.label :project_manager, "Project Manager (PM)" %>
+        <%= form.text_field :project_manager %>
+      </div>
+      <div class="form-group">
+        <%= form.label :construction_manager, "Construction Manager (CM)" %>
+        <%= form.text_field :construction_manager %>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 20px; text-align: right;">
+      <%= form.submit class: "btn btn-primary" %>
+    </div>
   </div>
 <% end %>
-
 
 ================================================================================
 FILE: app/views/projects/_project.html.erb
@@ -2922,21 +3005,59 @@ FILE: app/views/projects/edit.html.erb
 ================================================================================
 FILE: app/views/projects/index.html.erb
 ================================================================================
-<p style="color: green"><%= notice %></p>
+<div class="dashboard-container">
+  
+  <%# --- HEADER --- %>
+  <div class="dashboard-header">
+    <h1>Projects Directory</h1>
+    <%= link_to "New Project", new_project_path, class: "btn btn-primary" %>
+  </div>
 
-<h1>Projects</h1>
+  <%# --- TABLE CARD --- %>
+  <div class="table-card">
+    <table class="modern-table dashboard-table">
+      <thead>
+        <tr>
+          <th>Project Name</th>
+          <th>Contract #</th>
+          <th>Manager (PM)</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @projects.any? %>
+          <% @projects.each do |project| %>
+            <tr>
+              <td style="font-weight: 600; color: var(--text-main);">
+                <%= project.name %>
+              </td>
+              <td><%= project.contract_number.presence || "-" %></td>
+              <td><%= project.project_manager.presence || "-" %></td>
+              
+              <td class="text-right">
+                 <%# --- THE NEW LIBRARY BUTTON --- %>
+                 <%= link_to "Manage Library", project_bid_items_path(project), 
+                     class: "btn btn-secondary", 
+                     style: "font-size: 0.8rem; padding: 5px 12px; margin-right: 15px;" %>
+                 
+                 <%# Standard Actions %>
+                 <%= link_to "Edit", edit_project_path(project), class: "link-primary", style: "margin-right: 10px;" %>
+                 <%= link_to "Show", project, class: "link-primary" %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 40px; color: #666;">
+              No projects found. Create one to get started!
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
 
-<div id="projects">
-  <% @projects.each do |project| %>
-    <%= render project %>
-    <p>
-      <%= link_to "Show this project", project %>
-    </p>
-  <% end %>
 </div>
-
-<%= link_to "New project", new_project_path %>
-
 
 ================================================================================
 FILE: app/views/projects/new.html.erb
@@ -3357,11 +3478,16 @@ FILE: app/views/reports/_form.html.erb
            <div class="form-row" style="margin-bottom: 10px;">
              <div class="form-group" style="flex: 2;">
                <label class="text-muted-sm">Bid Item</label>
+               <%# MAESTRO CHANGE: Only show items for the current project %>
+               <% collection = report.project ? report.project.bid_items.order(:code) : [] %>
                <%= entry_form.select :bid_item_id, 
-                     BidItem.all.map { |bi| [bi.code + " - " + bi.description, bi.id, { 'data-questions': bi.active_questions.to_json }] }, 
+                     collection.map { |bi| [bi.code + " - " + bi.description, bi.id, { 'data-questions': bi.active_questions.to_json }] }, 
                      { prompt: "Select Item..." }, 
                      { class: "w-full", data: { action: "change->report-form#selectBidItem" } } 
                %>
+               <% if report.project.nil? %>
+                 <small style="color: red;">(Save Project to load items)</small>
+               <% end %>
              </div>
              <div class="form-group">
                <label class="text-muted-sm">Quantity</label>
@@ -3577,10 +3703,15 @@ FILE: app/views/reports/_form.html.erb
         <label class="text-muted-sm">Bid Item</label>
         <select name="report[placed_quantities_attributes][NEW_RECORD][bid_item_id]" class="w-full" data-action="change->report-form#selectBidItem">
             <option value="">Select Item</option>
-            <% BidItem.all.each do |bi| %>
-              <option value="<%= bi.id %>" data-questions="<%= bi.active_questions.to_json %>">
-                <%= bi.code %> - <%= bi.description %>
-              </option>
+            <%# MAESTRO CHANGE: Load the Project's specific library %>
+            <% if report.project %>
+              <% report.project.bid_items.order(:code).each do |bi| %>
+                <option value="<%= bi.id %>" data-questions="<%= bi.active_questions.to_json %>">
+                  <%= bi.code %> - <%= bi.description %>
+                </option>
+              <% end %>
+            <% else %>
+              <option disabled>Please save Project first...</option>
             <% end %>
         </select>
       </div>
@@ -3787,7 +3918,7 @@ FILE: app/views/reports/index.html.erb
     <div class="header-actions">
       <%= link_to "Export to Excel", reports_path(request.query_parameters.merge(format: :csv)), class: "btn btn-secondary" %>
       <%= link_to "Create New Report", new_report_path, class: "btn btn-primary" %>
-      <%= link_to "Manage Bid Items", bid_items_path, class: "btn btn-secondary" %>
+      <%= link_to "Project Directory", projects_path, class: "btn btn-secondary" %>
     </div>
   </div>
 
@@ -5341,11 +5472,7 @@ Rails.application.routes.draw do
   devise_for :users
   
   resources :reports do
-    # --- MOVED HERE ---
-    # This creates the URL: /reports/:report_id/checklist_entries
     resources :checklist_entries, only: [:create, :update] 
-    # ------------------
-
     member do
       post :submit_for_qc
       post :approve
@@ -5354,12 +5481,15 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :bid_items
+  # --- MAESTRO CHANGE: Nest Bid Items under Projects ---
+  resources :projects do
+    resources :bid_items # URL: /projects/1/bid_items/new
+  end
+  
   resources :phases
-  resources :projects
   
-  # (Removed the old standalone checklist_entries line from down here)
-  
+ 
+
   root "reports#index"
 end
 
@@ -5618,11 +5748,30 @@ class MakeReportFieldsOptional < ActiveRecord::Migration[7.1]
 end
 
 ================================================================================
+FILE: db/migrate/20260109235950_convert_project_to_library.rb
+================================================================================
+class ConvertProjectToLibrary < ActiveRecord::Migration[7.1]
+  def change
+    # 1. Add the "Header" fields to the Project Library
+    add_column :projects, :contract_number, :string
+    add_column :projects, :project_manager, :string
+    add_column :projects, :construction_manager, :string
+    add_column :projects, :contract_days, :integer
+    add_column :projects, :contract_start_date, :date
+
+    # 2. Link Bid Items to Projects
+    # We allow null temporarily (null: true) to avoid crashing existing data
+    add_reference :bid_items, :project, null: true, foreign_key: true
+  end
+end
+
+================================================================================
 FILE: db/seeds.rb
 ================================================================================
 # db/seeds.rb
 
 puts "🌱 Maestro: Cleaning old data..."
+# We destroy child records first to avoid foreign key errors
 ChecklistEntry.destroy_all
 PlacedQuantity.destroy_all
 QaEntry.destroy_all
@@ -5630,122 +5779,46 @@ CrewEntry.destroy_all
 EquipmentEntry.destroy_all
 ReportAttachment.destroy_all
 Report.destroy_all
-BidItem.destroy_all
+BidItem.destroy_all   # Now depends on Project
 SpecItem.destroy_all
 Project.destroy_all
 Phase.destroy_all
 
-puts "🏗️  Maestro: Building Projects..."
-Project.create!(name: "Runway 1R Rehabilitation")
-Project.create!(name: "Taxiway Z Rehabilitation")
-Project.create!(name: "Gate 17 Apron Rehabilitation")
+puts "🏗️  Maestro: Building Projects (The Libraries)..."
+# We now include the required Contract Info 
+project_1 = Project.create!(
+  name: "Runway 1R Rehabilitation",
+  contract_number: "8983.61",
+  project_manager: "Anthony Lum, PE",
+  construction_manager: "Joshua Alcantara, PE",
+  contract_days: 89,
+  contract_start_date: Date.new(2025, 9, 24)
+)
+
+Project.create!(
+  name: "Taxiway Z Rehabilitation",
+  contract_number: "9000.12",
+  project_manager: "Anthony Lum, PE",
+  construction_manager: "Joshua Alcantara, PE",
+  contract_days: 120,
+  contract_start_date: Date.new(2025, 10, 1)
+)
+
+Project.create!(
+  name: "Gate 17 Apron Rehabilitation",
+  contract_number: "7555.05",
+  project_manager: "Sarah Engineer, PE",
+  construction_manager: "Mike Builder",
+  contract_days: 45,
+  contract_start_date: Date.new(2026, 1, 15)
+)
 
 puts "📅 Maestro: Building Phases..."
 (1..6).each { |i| Phase.create!(name: "Phase #{i}") }
 
 puts "📘 Maestro: Building FAA Spec Library (AC 150/5370-10H)..."
 
-# The FAA Master List
-faa_specs = {
-  "Part 2 – General Construction" => {
-    "C-100" => "Contractor Quality Control Program (CQCP)",
-    "C-102" => "Temporary Air and Water Pollution, Soil Erosion, and Siltation Control",
-    "C-105" => "Mobilization",
-    "C-110" => "Method of Estimating Percentage of Material Within Specification Limits (PWL)"
-  },
-  "Part 3 – Sitework" => {
-    "P-101" => "Preparation/Removal of Existing Pavements",
-    "P-151" => "Clearing and Grubbing",
-    "P-152" => "Excavation, Subgrade, and Embankment",
-    "P-153" => "Controlled Low-Strength Material (CLSM)",
-    "P-154" => "Subbase Course",
-    "P-155" => "Lime-Treated Subgrade",
-    "P-156" => "Cement-Treated Subgrade",
-    "P-157" => "Kiln Dust Treated Subgrade",
-    "P-158" => "Fly Ash Treated Subgrade"
-  },
-  "Part 4 – Base Courses" => {
-    "P-207" => "In-place Full Depth Reclamation (FDR) Base Course",
-    "P-208" => "Aggregate Base Course",
-    "P-209" => "Crushed Aggregate Base Course",
-    "P-210" => "Caliche Base Course",
-    "P-211" => "Lime Rock Base Course",
-    "P-212" => "Shell Base Course",
-    "P-213" => "Sand-Clay Base Course",
-    "P-217" => "Aggregate-Turf Runway/Taxiway",
-    "P-219" => "Recycled Concrete Aggregate Base Course",
-    "P-220" => "Cement Treated Soil Base Course"
-  },
-  "Part 5 – Stabilized Base Courses" => {
-    "P-304" => "Cement-Treated Aggregate Base Course (CTB)",
-    "P-306" => "Lean Concrete Base Course",
-    "P-307" => "Cement Treated Permeable Base Course (CTPB)"
-  },
-  "Part 6 – Flexible Pavements" => {
-    "P-401" => "Asphalt Mix Pavement",
-    "P-403" => "Asphalt Mix Pavement [Base/Leveling/Surface]",
-    "P-404" => "Fuel-Resistant Asphalt Mix Pavement"
-  },
-  "Part 7 – Rigid Pavement" => {
-    "P-501" => "Cement Concrete Pavement"
-  },
-  "Part 8 – Surface Treatments" => {
-    "P-608" => "Emulsified Asphalt Seal Coat",
-    "P-608-R" => "Rapid Cure Seal Coat",
-    "P-609" => "Chip Seal Coat",
-    "P-623" => "Emulsified Asphalt Spray Seal Coat",
-    "P-626" => "Emulsified Asphalt Slurry Seal Surface Treatment",
-    "P-629" => "Thermoplastic Coal Tar Emulsion Surface Treatments",
-    "P-630" => "Refined Coal Tar Emulsion Without Additives",
-    "P-631" => "Refined Coal Tar Emulsion With Additives",
-    "P-632" => "Asphalt Pavement Rejuvenation"
-  },
-  "Part 9 – Miscellaneous" => {
-    "P-602" => "Emulsified Asphalt Prime Coat",
-    "P-603" => "Emulsified Asphalt Tack Coat",
-    "P-604" => "Compression Joint Seals for Concrete Pavements",
-    "P-605" => "Joint Sealants for Pavements",
-    "P-606" => "Adhesive Compounds for Sealing Wire/Lights",
-    "P-610" => "Concrete for Miscellaneous Structures",
-    "P-620" => "Runway and Taxiway Marking",
-    "P-621" => "Saw-Cut Grooves"
-  },
-  "Part 10 – Fencing" => {
-    "F-160" => "Wire Fence with Wood Posts",
-    "F-161" => "Wire Fence with Steel Posts",
-    "F-162" => "Chain-Link Fence",
-    "F-163" => "Wildlife Deterrent Fence Skirt",
-    "F-164" => "Wildlife Exclusion Fence"
-  },
-  "Part 11 – Drainage" => {
-    "D-701" => "Pipe for Storm Drains and Culverts",
-    "D-702" => "Slotted Drains",
-    "D-705" => "Pipe Underdrains for Airports",
-    "D-751" => "Manholes, Catch Basins, Inlets",
-    "D-752" => "Concrete Culverts and Headwalls",
-    "D-754" => "Concrete Gutters, Ditches, and Flumes"
-  },
-  "Part 12 – Turfing" => {
-    "T-901" => "Seeding",
-    "T-903" => "Sprigging",
-    "T-904" => "Sodding",
-    "T-905" => "Topsoiling",
-    "T-908" => "Mulching"
-  },
-  "Part 13 – Lighting Installation" => {
-    "L-101" => "Airport Rotating Beacons",
-    "L-103" => "Airport Beacon Towers",
-    "L-107" => "Airport Wind Cones",
-    "L-108" => "Underground Power Cable for Airports",
-    "L-109" => "Airport Transformer Vault and Equipment",
-    "L-110" => "Airport Underground Electrical Duct Banks",
-    "L-115" => "Electrical Manholes and Junction Structures",
-    "L-119" => "Airport Obstruction Lights",
-    "L-125" => "Installation of Airport Lighting Systems"
-  }
-}
-
-# Default Checklist Questions (Generic Placeholder)
+# Default Checklist Questions
 default_questions = [
   "Material submittals approved?",
   "Weather conditions acceptable?",
@@ -5754,6 +5827,27 @@ default_questions = [
   "Safety requirements met?",
   "Photos taken?"
 ]
+
+# The FAA Master List (Simplified for Seed)
+faa_specs = {
+  "Part 6 – Flexible Pavements" => {
+    "P-401" => "Asphalt Mix Pavement",
+    "P-403" => "Asphalt Mix Pavement [Base/Leveling/Surface]",
+  },
+  "Part 3 – Sitework" => {
+    "P-152" => "Excavation, Subgrade, and Embankment",
+  },
+  "Part 9 – Miscellaneous" => {
+    "P-620" => "Runway and Taxiway Marking",
+    "P-603" => "Emulsified Asphalt Tack Coat"
+  },
+  "Part 11 – Drainage" => {
+    "D-701" => "Pipe for Storm Drains and Culverts"
+  },
+  "Part 13 – Lighting Installation" => {
+    "L-108" => "Underground Power Cable for Airports"
+  }
+}
 
 faa_specs.each do |division, items|
   items.each do |code, desc|
@@ -5766,23 +5860,27 @@ faa_specs.each do |division, items|
   end
 end
 
-puts "💰 Maestro: Linking Bid Items (Simulation)..."
-# Randomly create some bid items for testing
+puts "💰 Maestro: Linking Bid Items (The Translation Layer)..."
+
+# We link specific codes (e.g. "BID-P-401-01") to Project 1
+# This simulates the "Project Library" concept
 ["P-401", "P-403", "P-152", "P-620", "D-701", "L-108"].each do |code|
   spec = SpecItem.find_by(code: code)
   next unless spec
   
   BidItem.create!(
-    code: "BID-#{code}-01",
+    project: project_1,            # <--- The Critical Link
+    code: "BID-#{code}-01",        # The Project-Specific Code
     description: "Install #{spec.description}",
     unit: "EA",
-    spec_item: spec
+    spec_item: spec,               # <--- The Universal Definition
+    checklist_questions: spec.checklist_questions
   )
 end
 
 puts "✅ Maestro: Seeding Complete!"
-puts "   Specs Created: #{SpecItem.count}"
-puts "   Divisions:     #{SpecItem.distinct.count(:division)}"
+puts "   Projects Created: #{Project.count}"
+puts "   Bid Items (Project 1): #{project_1.bid_items.count}"
 
 ================================================================================
 FILE: public/404.html
