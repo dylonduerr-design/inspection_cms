@@ -49,7 +49,8 @@ class ReportsController < ApplicationController
         
         # Auto-fill header info
         @report.contractor = @project.respond_to?(:prime_contractor) ? @project.prime_contractor : nil
-        @report.superintendent = @project.respond_to?(:default_superintendent) ? @project.default_superintendent : nil
+        
+        # MAESTRO FIX: Removed assignment to deleted 'superintendent' column
       end
     end
 
@@ -205,7 +206,7 @@ class ReportsController < ApplicationController
         :status, :result,
         :shift_start, :shift_end,
         :contractor,
-        :prime_contractor, :superintendent, 
+        :prime_contractor, # MAESTRO: :superintendent removed here
 
         # --- 2. WEATHER & CONDITIONS ---
         :temp_1, :temp_2, :temp_3,
@@ -237,7 +238,8 @@ class ReportsController < ApplicationController
 
         # --- 6. NESTED TABLES ---
         crew_entries_attributes: [
-          :id, :contractor, :superintendent, :foreman, 
+          :id, :contractor,
+          :superintendent_count, :foreman_count, # MAESTRO: Updated to counts
           :survey_count, :operator_count, :laborer_count, :electrician_count, 
           :notes, :_destroy
         ],

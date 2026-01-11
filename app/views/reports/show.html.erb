@@ -206,8 +206,9 @@
         <thead>
           <tr>
             <th>Contractor</th>
-            <th>Superintendent</th>
-            <th>Foreman</th>
+            <%# MAESTRO CHANGE: Updated Headers %>
+            <th class="text-center">Supt (No.)</th>
+            <th class="text-center">Foreman (No.)</th>
             <th class="text-center">Survey</th>
             <th class="text-center">Operator</th>
             <th class="text-center">Laborer</th>
@@ -218,8 +219,11 @@
           <% @report.crew_entries.each do |crew| %>
             <tr>
               <td class="font-bold"><%= crew.contractor %></td>
-              <td><%= crew.superintendent %></td>
-              <td><%= crew.foreman %></td>
+              
+              <%# MAESTRO CHANGE: Updated to new Integer fields %>
+              <td class="text-center"><%= crew.superintendent_count %></td>
+              <td class="text-center"><%= crew.foreman_count %></td>
+              
               <td class="text-center"><%= crew.survey_count %></td>
               <td class="text-center"><%= crew.operator_count %></td>
               <td class="text-center"><%= crew.laborer_count %></td>

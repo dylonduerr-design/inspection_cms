@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_11_163344) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_11_165754) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -116,6 +116,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_163344) do
     t.jsonb "checklist_answers", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "location"
     t.index ["bid_item_id"], name: "index_placed_quantities_on_bid_item_id"
     t.index ["report_id"], name: "index_placed_quantities_on_report_id"
   end
