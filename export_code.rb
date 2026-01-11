@@ -1,8 +1,6 @@
 # export_code.rb
 # Run this with: ruby export_code.rb
 
-OUTPUT_FILE = 'full_codebase.txt'
-
 # Directories to include recursively
 INCLUDE_DIRS = %w[
   app
@@ -30,7 +28,7 @@ IGNORE_PATHS = [
   'app/assets/builds',
   'config/credentials',
   'config/master.key',
-  'db/schema.rb',      # We usually prefer migrations, but schema is okay too if you want it
+  'db/schema.rb',
   'public/packs',
   'node_modules',
   'storage',
@@ -38,6 +36,17 @@ IGNORE_PATHS = [
   'log',
   '.git'
 ]
+
+# --- MAESTRO: AUTO-INCREMENT LOGIC ---
+# Scan directory for files matching "full_codebaserev*.txt"
+existing_exports = Dir.glob('full_codebaserev*.txt')
+
+# Extract numbers, default to 5 if none found (so next is 6)
+max_rev = existing_exports.map { |f| f.scan(/\d+/).last.to_i }.max || 5
+next_rev = max_rev + 1
+
+OUTPUT_FILE = "full_codebaserev#{next_rev}.txt"
+# -------------------------------------
 
 def header(path)
   <<~HEADER
@@ -50,7 +59,8 @@ def header(path)
 end
 
 File.open(OUTPUT_FILE, 'w') do |out|
-  out.puts "INSPECTION CMS CODEBASE EXPORT - #{Time.now}"
+  # MAESTRO: Added Revision Number to Header
+  out.puts "INSPECTION CMS CODEBASE EXPORT - REVISION #{next_rev} - #{Time.now}"
   
   # 1. Process specific root files
   INCLUDE_FILES.each do |file|
@@ -79,4 +89,4 @@ File.open(OUTPUT_FILE, 'w') do |out|
   end
 end
 
-puts "✅ Codebase dumped to #{OUTPUT_FILE}"
+puts "✅ Codebase dumped to #{OUTPUT_FILE} (Rev #{next_rev})"

@@ -1,4 +1,4 @@
-INSPECTION CMS CODEBASE EXPORT - 2026-01-09 17:21:38 -0800
+INSPECTION CMS CODEBASE EXPORT - REVISION 6 - 2026-01-11 06:09:51 -0800
 
 
 ================================================================================
@@ -945,10 +945,10 @@ class ReportsController < ApplicationController
     # Inspectors should only see their own reports in 'creating' or 'revise' stages.
     # For all other stages (QC, Authorization), we show the global list.
     @reports = if ['creating', 'revise'].include?(params[:status])
-                 current_user.reports 
-               else
-                 Report.all
-               end
+                  current_user.reports 
+                else
+                  Report.all
+                end
 
     # 3. FILTER: Actually apply the status filter
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
@@ -988,13 +988,15 @@ class ReportsController < ApplicationController
 
   # GET /reports/1/edit
   def edit
+    # MAESTRO: Auto-build empty rows so the form isn't empty
     @report.placed_quantities.build if @report.placed_quantities.empty?
     @report.equipment_entries.build if @report.equipment_entries.empty?
+    
+    # MAESTRO: Auto-spawn crew entry so it appears by default
+    @report.crew_entries.build if @report.crew_entries.empty?
   end
 
   # POST /reports
-  # Note: With Draft Pattern, this action is rarely hit (since 'new' redirects to 'edit' -> 'update'),
-  # but we keep it for fallback or API usage.
   def create
     @report = current_user.reports.build(report_params)
     @report.status ||= :creating
@@ -1072,22 +1074,18 @@ class ReportsController < ApplicationController
     end
 
     def apply_search_filters
-      # NOTE: Status filtering is now handled in the index action!
-
       @reports = @reports.filter_by_inspector(params[:inspector]) if params[:inspector].present?
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
 
       # Updated Precip Filter
-      # We assume the user wants to find records with "At least X amount of rain"
       if params[:precip_min].present?
-         max = params[:precip_max].presence || 100 # Default max if user leaves it blank
+         max = params[:precip_max].presence || 100 
          @reports = @reports.filter_by_precip_range(params[:precip_min], max)
       end
 
       # Date Range Filter
       if params[:start_date].present?
-        # Ensure we handle the end date if the scope expects a range
         end_date = params[:end_date].presence || params[:start_date]
         @reports = @reports.filter_by_date_range(params[:start_date], end_date) 
       end
@@ -1146,13 +1144,25 @@ class ReportsController < ApplicationController
         :precip_1, :precip_2, :precip_3,
         :weather_summary_1, :weather_summary_2, :weather_summary_3,
         :weather, :temperature,
+        
+        # MAESTRO: New Weather Fields
+        :visibility_1, :visibility_2, :visibility_3,
+        :surface_conditions,
+
         :station_start, :station_end, :plan_sheet, :relevant_docs,
         
         # --- 3. COMPLIANCE & SAFETY ---
         :deficiency_status, :deficiency_desc,
-        :traffic_control, :environmental, :security, :safety_incident, 
-        :air_ops_coordination, :swppp_controls,
-        :safety_desc, :commentary,
+        :safety_incident, :safety_desc,
+        :commentary,
+        
+        # MAESTRO: Compliance Fields with Notes
+        :traffic_control, :traffic_control_note,
+        :environmental, :environmental_note,
+        :security, :security_note,
+        :air_ops_coordination, :air_ops_note,
+        :swppp_controls, :swppp_note,
+        :phasing_compliance, :phasing_compliance_note,
 
         # --- 4. TEXT AREAS ---
         :additional_activities, :additional_info,
@@ -1173,7 +1183,6 @@ class ReportsController < ApplicationController
           :id, :bid_item_id, :quantity, :notes, :_destroy, 
           :checklist_answers 
         ],
-        # MAESTRO: Added to support nested checklists if needed in future
         checklist_entries_attributes: [:id, :spec_item_id, :_destroy, checklist_answers: {}],
 
         qa_entries_attributes: [
@@ -1989,17 +1998,30 @@ class Report < ApplicationRecord
   
   has_many :activity_logs, dependent: :destroy
 
-  # NESTED ENTRIES
-  # These are the "Big Four" data tables attached to the report
+  # --- NESTED ENTRIES (The Big Four) ---
+  
+  # 1. PLACED QUANTITIES (BID ITEMS)
+  # Reject if 'bid_item_id' is missing.
   has_many :placed_quantities, dependent: :destroy
-  accepts_nested_attributes_for :placed_quantities, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :placed_quantities, 
+                                allow_destroy: true, 
+                                reject_if: proc { |att| att['bid_item_id'].blank? }
 
+  # 2. EQUIPMENT
+  # Reject if no description (make_model) is provided.
   has_many :equipment_entries, dependent: :destroy
-  accepts_nested_attributes_for :equipment_entries, allow_destroy: true, reject_if: proc { |att| att['make_model'].blank? }
+  accepts_nested_attributes_for :equipment_entries, 
+                                allow_destroy: true, 
+                                reject_if: proc { |att| att['make_model'].blank? }
 
+  # 3. CREW
+  # Reject if 'contractor' is blank.
   has_many :crew_entries, dependent: :destroy
-  accepts_nested_attributes_for :crew_entries, allow_destroy: true, reject_if: proc { |att| att['contractor'].blank? }
+  accepts_nested_attributes_for :crew_entries, 
+                                allow_destroy: true, 
+                                reject_if: proc { |att| att['contractor'].blank? }
 
+  # 4. QA ENTRIES
   has_many :qa_entries, dependent: :destroy
   accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
 
@@ -2011,7 +2033,6 @@ class Report < ApplicationRecord
   has_many :checklist_entries, dependent: :destroy
 
   # --- 3. VALIDATIONS ---
-  # Note: created with 'validate: false' in draft mode, but these run on update/submit.
   validates :start_date, presence: true
   validates :project, presence: true
   validates :phase, presence: true
@@ -2031,6 +2052,9 @@ class Report < ApplicationRecord
   enum air_ops_coordination:  { air_na: 0, air_yes: 1, air_no: 2 }
   enum swppp_controls:        { swppp_na: 0, swppp_yes: 1, swppp_no: 2 }
 
+  # MAESTRO: The Missing Link!
+  enum phasing_compliance:    { phase_na: 0, phase_yes: 1, phase_no: 2 }
+
   # --- 5. SEARCH SCOPES ---
   scope :filter_by_inspector, ->(query) { 
     joins(:user).where("users.email ILIKE ?", "%#{query}%") 
@@ -2042,7 +2066,7 @@ class Report < ApplicationRecord
     where(start_date: start_date..end_date) 
   }
 
-  # Smart Precip Filter (Casts strings like '0.50' to numbers for comparison)
+  # Smart Precip Filter
   scope :filter_by_precip_range, ->(min, max) {
     safe_cast = ->(col) { "CASE WHEN #{col} ~ '^[0-9]+(\\.[0-9]+)?$' THEN #{col}::numeric ELSE 0 END" }
     where(
@@ -3105,25 +3129,31 @@ FILE: app/views/projects/show.html.erb
 ================================================================================
 FILE: app/views/reports/_crew_entry_fields.html.erb
 ================================================================================
+<%# app/views/reports/_crew_entry_fields.html.erb %>
 <div class="nested-entry-card nested-fields" style="margin-bottom: 15px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+  
+  <%# --- ROW 1 --- %>
   <div class="form-row">
      <div class="form-group">
        <label>Contractor</label>
+       <%# Class 'auto-contractor' is used by JS to auto-fill this field %>
        <%= f.text_field :contractor, placeholder: "Contractor Name", class: "auto-contractor" %>
      </div>
      <div class="form-group">
        <label>Superintendent</label>
-       <%= f.number_field :superintendent, placeholder: "no." %>
+       <%= f.text_field :superintendent, placeholder: "Name" %>
      </div>
      <div class="form-group">
        <label>Foreman</label>
-       <%= f.number_field :foreman, placeholder: "no." %>
+       <%= f.text_field :foreman, placeholder: "Name" %>
      </div>
      <div class="form-group">
        <label>Surveyors</label>
        <%= f.number_field :survey_count, placeholder: "no." %>
      </div>
   </div>
+
+  <%# --- ROW 2 --- %>
   <div class="form-row">
      <div class="form-group">
        <label>Operators</label>
@@ -3137,13 +3167,23 @@ FILE: app/views/reports/_crew_entry_fields.html.erb
        <label>Electricians</label>
        <%= f.number_field :electrician_count, placeholder: "no." %>
      </div>
+     
+     <%# --- DELETE BUTTON LOGIC --- %>
      <div class="form-group" style="display:flex; align-items:flex-end;">
-       <% if f.object&.persisted? %>
+       <%# 1. If saved, render the hidden destroy checkbox %>
+       <% if f.object.persisted? %>
          <div style="display:none;"><%= f.check_box :_destroy %></div>
-         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red;">Delete</button>
        <% end %>
+
+       <%# 2. Always show the button. JS removes the DOM element. %>
+       <button type="button" class="remove-row-btn" 
+               data-action="click->report-form#removeAssociation" 
+               style="color: red;">
+         Delete
+       </button>
      </div>
   </div>
+
 </div>
 
 ================================================================================
@@ -3199,15 +3239,6 @@ FILE: app/views/reports/_form.html.erb
       SECTION 1: GENERAL INFORMATION
       ========================================================================= %>
   <div class="form-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
-      <h2 style="margin:0; border:none;">1. General Information</h2>
-      <div style="font-size:0.9rem; color:#666;">DIR #<%= report.dir_number %></div>
-    </div>
-
-    <%# =========================================================================
-      SECTION 1: GENERAL INFORMATION
-      ========================================================================= %>
-  <div class="form-card">
     <%# --- HEADER WITH CONTEXT --- %>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:15px;">
       <div>
@@ -3217,7 +3248,7 @@ FILE: app/views/reports/_form.html.erb
           <span style="font-size: 1rem; color: var(--primary); font-weight: 600; background: #eff6ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #dbeafe;">
             📂 <%= report.project.name %>
           </span>
-          <%# Hidden field ensures the ID is submitted even though we removed the dropdown %>
+          <%# Hidden field ensures the ID is submitted %>
           <%= form.hidden_field :project_id %>
         <% else %>
           <span style="color: var(--danger);">⚠ No Project Selected</span>
@@ -3231,8 +3262,8 @@ FILE: app/views/reports/_form.html.erb
     <%# --- ROW 1: PHASE & CONTRACTOR --- %>
     <div class="form-row">
       <div class="form-group" style="flex: 1;">
-        <label>Phase / Area</label>
-        <%= form.collection_select :phase_id, Phase.all, :id, :name, {prompt: "Select Phase"}, { class: "form-control" } %>
+        <label>Phase / Area <span style="color:red">*</span></label>
+        <%= form.collection_select :phase_id, Phase.all, :id, :name, {prompt: "Select Phase"}, { class: "form-control", required: true } %>
       </div>
       <div class="form-group" style="flex: 2;">
         <label>Prime Contractor</label>
@@ -3240,11 +3271,11 @@ FILE: app/views/reports/_form.html.erb
       </div>
     </div>
 
-    <%# --- ROW 2: DATES (Restored Split) & TIMES --- %>
+    <%# --- ROW 2: DATES & TIMES --- %>
     <div class="form-row">
       <div class="form-group">
-        <label>Start Date</label>
-        <%= form.date_field :start_date %>
+        <label>Start Date <span style="color:red">*</span></label>
+        <%= form.date_field :start_date, required: true %>
       </div>
       <div class="form-group">
         <label>End Date</label>
@@ -3260,7 +3291,7 @@ FILE: app/views/reports/_form.html.erb
       </div>
     </div>
 
-    <%# --- WEATHER TRIO (Vertical Layout) --- %>
+    <%# --- WEATHER TRIO --- %>
     <div style="margin-top: 25px;">
       <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Weather Conditions</label>
       
@@ -3271,7 +3302,8 @@ FILE: app/views/reports/_form.html.erb
           <%= form.number_field :temp_1, placeholder: "Temp (°F)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :weather_summary_1, placeholder: "Condition (e.g. Sunny)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :wind_1, placeholder: "Wind (e.g. 5mph N)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
-          <%= form.text_field :precip_1, placeholder: "Precipitation", style: "width: 100%;" %>
+          <%= form.text_field :precip_1, placeholder: "Precipitation", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
+          <%= form.text_field :visibility_1, placeholder: "Visibility", style: "width: 100%;" %>
           
           <button type="button" class="btn-secondary weather-fetch-btn" 
                   data-action="click->report-form#fetchWeather" 
@@ -3287,7 +3319,8 @@ FILE: app/views/reports/_form.html.erb
           <%= form.number_field :temp_2, placeholder: "Temp (°F)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :weather_summary_2, placeholder: "Condition", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :wind_2, placeholder: "Wind", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
-          <%= form.text_field :precip_2, placeholder: "Precipitation", style: "width: 100%;" %>
+          <%= form.text_field :precip_2, placeholder: "Precipitation", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
+          <%= form.text_field :visibility_2, placeholder: "Visibility", style: "width: 100%;" %>
 
           <button type="button" class="btn-secondary weather-fetch-btn" 
                   data-action="click->report-form#fetchWeather" 
@@ -3303,7 +3336,8 @@ FILE: app/views/reports/_form.html.erb
           <%= form.number_field :temp_3, placeholder: "Temp (°F)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :weather_summary_3, placeholder: "Condition", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :wind_3, placeholder: "Wind", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
-          <%= form.text_field :precip_3, placeholder: "Precipitation", style: "width: 100%;" %>
+          <%= form.text_field :precip_3, placeholder: "Precipitation", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
+          <%= form.text_field :visibility_3, placeholder: "Visibility", style: "width: 100%;" %>
 
           <button type="button" class="btn-secondary weather-fetch-btn" 
                   data-action="click->report-form#fetchWeather" 
@@ -3313,11 +3347,17 @@ FILE: app/views/reports/_form.html.erb
           </button>
         </div>
       </div>
+      
+      <%# MAESTRO: Surface Conditions - Single field grouped with weather %>
+      <div style="margin-top: 15px; background: #f9fafb; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">
+        <label style="font-weight: 600; color: var(--text-main);">Surface / Site Conditions</label>
+        <%= form.text_field :surface_conditions, placeholder: "e.g. Dry, Muddy, Standing Water in areas...", style: "width: 100%; margin-top: 5px;" %>
+      </div>
     </div>
   </div>
 
   <%# =========================================================================
-      SECTION 2: COMPLIANCE & SPECIFICATIONS (Consolidated)
+      SECTION 2: COMPLIANCE & CHECKLISTS
       ========================================================================= %>
   <div class="form-card">
     <h2 style="margin-top:0;">2. Compliance & Checklists</h2>
@@ -3359,37 +3399,56 @@ FILE: app/views/reports/_form.html.erb
       </div>
     </div>
 
-    <%# --- B. STANDARD COMPLIANCE GRID (Compact) --- %>
-    <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px;">Site Conditions</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+    <%# --- B. STANDARD COMPLIANCE GRID (Refactored) --- %>
+    <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px;">Site Conditions & Compliance</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 30px;">
       
-      <%# Helper for small radio groups %>
-      <% render_toggle = ->(field_name, label_text, enum_keys) { %>
-        <div style="border: 1px solid #eee; padding: 10px; border-radius: 6px;">
-          <label style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:8px;"><%= label_text %></label>
-          <div style="display:flex; gap:10px;">
+      <%# MAESTRO: Smart Helper that adds conditional note field %>
+      <% render_compliance_item = ->(field_name, label_text, note_field, enum_keys) { %>
+        <%# Determine which key triggers the note (logic: ends with '_no') %>
+        <% no_key = enum_keys.find { |k| k.end_with?('_no') } %>
+        
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 6px; background: #fff;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:8px;"><%= label_text %></label>
+          
+          <div style="display:flex; gap:15px; margin-bottom: 10px;">
             <% enum_keys.each do |k| %>
-               <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
-                 <%= form.radio_button field_name, k %>
+               <label style="font-size:0.85rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                 <%# Logic: All buttons trigger the toggle. Only the 'no_key' makes it visible. %>
+                 <%= form.radio_button field_name, k,
+                     data: { 
+                       action: "change->report-form#toggleSection", 
+                       target_id: "#{field_name}-note", 
+                       valid_values: [no_key].to_json 
+                     } 
+                 %>
                  <%= k.split('_').last.capitalize %>
                </label>
             <% end %>
           </div>
+
+          <%# Conditional Note Field %>
+          <div id="<%= field_name %>-note" style="display: none;">
+            <%= form.text_area note_field, rows: 2, placeholder: "Explain non-compliance...", style: "width:100%; border-color: var(--border-alert);" %>
+          </div>
         </div>
       <% } %>
 
-      <% render_toggle.call(:traffic_control, "Traffic Control", Report.traffic_controls.keys) %>
-      <% render_toggle.call(:environmental, "Environmental", Report.environmentals.keys) %>
-      <% render_toggle.call(:security, "Security", Report.securities.keys) %>
-      <% render_toggle.call(:air_ops_coordination, "Air Ops Coord", Report.air_ops_coordinations.keys) %>
-      <% render_toggle.call(:swppp_controls, "SWPPP Controls", Report.swppp_controls.keys) %>
+      <%# New Items %>
+      <% render_compliance_item.call(:phasing_compliance, "Phasing Exhibit Compliance?", :phasing_compliance_note, Report.phasing_compliances.keys) %>
+      <% render_compliance_item.call(:security, "OPS Security Compliance?", :security_note, Report.securities.keys) %>
+      <% render_compliance_item.call(:environmental, "Environmental Regulation Compliance?", :environmental_note, Report.environmentals.keys) %>
+      
+      <%# Existing Items %>
+      <% render_compliance_item.call(:traffic_control, "Traffic Control", :traffic_control_note, Report.traffic_controls.keys) %>
+      <% render_compliance_item.call(:air_ops_coordination, "Air Ops Coordination", :air_ops_note, Report.air_ops_coordinations.keys) %>
+      <% render_compliance_item.call(:swppp_controls, "SWPPP Controls", :swppp_note, Report.swppp_controls.keys) %>
     </div>
 
     <hr style="border-top: 1px solid #e5e7eb; margin: 30px 0;">
 
-    <%# --- C. SPEC CHECKLISTS (Moved Here!) --- %>
+    <%# --- C. SPEC CHECKLISTS --- %>
     <%= render "spec_check_card", report: report %>
-
   </div>
 
   <%# =========================================================================
@@ -3457,14 +3516,23 @@ FILE: app/views/reports/_form.html.erb
                  <%= entry_form.number_field :quantity, step: 0.01, placeholder: "Qty" %>
                </div>
              </div>
+             
+             <%# MAESTRO FIX: Split delete logic so button always appears %>
              <div class="nested-row-container" style="margin-bottom: 10px;">
                <%= entry_form.hidden_field :checklist_answers, class: "checklist-answers-field", value: (entry_form.object.checklist_answers || {}).to_json %>
                <button type="button" class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" data-action="click->report-form#openChecklist">Open Checklist</button>
-               <% if entry_form.object&.persisted? %>
+               
+               <% if entry_form.object.persisted? %>
                  <div style="display:none;"><%= entry_form.check_box :_destroy %></div>
-                 <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation">✕ Delete</button>
                <% end %>
+               
+               <button type="button" class="remove-row-btn" 
+                       data-action="click->report-form#removeAssociation" 
+                       style="margin-left: auto; color: red;">
+                 ✕ Delete
+               </button>
              </div>
+             
              <div class="form-group">
                <%= entry_form.text_field :notes, placeholder: "Daily notes for this item...", class: "w-full" %>
              </div>
@@ -3476,12 +3544,12 @@ FILE: app/views/reports/_form.html.erb
   </div>
 
   <%# =========================================================================
-      SECTION 5: COMMENTARY & NOTES (Reordered)
+      SECTION 5: COMMENTARY & NOTES
       ========================================================================= %>
   <div class="form-card">
     <h2 style="margin-top:0;">5. Commentary & Notes</h2>
 
-    <%# 1. GENERAL COMMENTARY (Now First) %>
+    <%# 1. GENERAL COMMENTARY %>
     <div class="form-group full-width" style="margin-bottom: 25px;">
       <label style="font-size:1.1rem; color:var(--primary);">General Commentary</label>
       <small style="display:block; color:#666; margin-bottom:5px;">Summary of the day's events, issues, and progress.</small>
@@ -3524,7 +3592,8 @@ FILE: app/views/reports/_form.html.erb
       <%= form.fields_for :report_attachments do |attachment_form| %>
         <div class="gallery-card nested-fields">
           <div class="thumbnail-area">
-            <% if attachment_form.object.file.attached? %>
+            <%# MAESTRO FIX: Ensure record is persisted before attempting thumbnail generation %>
+            <% if attachment_form.object.persisted? && attachment_form.object.file.attached? %>
               <% if attachment_form.object.file.representable? %>
                 <%= image_tag attachment_form.object.file.representation(resize_to_limit: [400, 400]) %>
               <% else %>
@@ -3549,7 +3618,7 @@ FILE: app/views/reports/_form.html.erb
     <%= form.submit "Save & Submit Report", class: "btn-primary-action", style: "box-shadow: 0 4px 12px rgba(0,0,0,0.15);" %>
   </div>
 
-  <%# --- DIALOGS & TEMPLATES --- %>
+  <%# --- DIALOGS --- %>
   <dialog data-report-form-target="checklistModal">
     <div class="modal-header"><h3>Inspection Checklist</h3></div>
     <div class="modal-body" data-report-form-target="questionsContainer"></div>
@@ -3559,11 +3628,7 @@ FILE: app/views/reports/_form.html.erb
     </div>
   </dialog>
 
-  <%# NOTE: Templates (qa-template, crew-template, etc.) are rendered below, identical to previous version but omitted here for brevity if unchanged. 
-      Ensure you keep the <template> tags from the previous file at the bottom! %>
-  
-  <%# ... [KEEP YOUR <template> TAGS HERE] ... %>
-  <%# To save space in this response, I am assuming you will retain the existing templates at the bottom of the file. %>
+  <%# --- TEMPLATES --- %>
   <%= render "form_templates" %> 
 
 <% end %>
@@ -5709,6 +5774,35 @@ class ConvertProjectToLibrary < ActiveRecord::Migration[7.1]
     # 2. Link Bid Items to Projects
     # We allow null temporarily (null: true) to avoid crashing existing data
     add_reference :bid_items, :project, null: true, foreign_key: true
+  end
+end
+
+================================================================================
+FILE: db/migrate/20260111135437_add_fields_to_reports.rb
+================================================================================
+class AddFieldsToReports < ActiveRecord::Migration[7.1]
+  def change
+    # --- 1. Weather Enhancements ---
+    # Visibility tracks per shift (Start/Mid/End)
+    add_column :reports, :visibility_1, :string
+    add_column :reports, :visibility_2, :string
+    add_column :reports, :visibility_3, :string
+    
+    # Surface Conditions is now a SINGLE site-wide field
+    add_column :reports, :surface_conditions, :string
+
+    # --- 2. New Compliance Item ---
+    # 0=N/A, 1=Yes (Compliant), 2=No (Non-Compliant)
+    add_column :reports, :phasing_compliance, :integer, default: 0
+
+    # --- 3. Conditional Notes for Compliance ---
+    # Stores the explanation when "No" is selected
+    add_column :reports, :phasing_compliance_note, :text
+    add_column :reports, :traffic_control_note, :text
+    add_column :reports, :environmental_note, :text
+    add_column :reports, :security_note, :text
+    add_column :reports, :air_ops_note, :text
+    add_column :reports, :swppp_note, :text
   end
 end
 
