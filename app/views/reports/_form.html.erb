@@ -41,7 +41,6 @@
     <div class="form-row">
       <div class="form-group" style="flex: 1;">
         <label>Phase / Area <span style="color:red">*</span></label>
-        <%# MAESTRO: Added required: true %>
         <%= form.collection_select :phase_id, Phase.all, :id, :name, {prompt: "Select Phase"}, { class: "form-control", required: true } %>
       </div>
       <div class="form-group" style="flex: 2;">
@@ -54,7 +53,6 @@
     <div class="form-row">
       <div class="form-group">
         <label>Start Date <span style="color:red">*</span></label>
-        <%# MAESTRO: Added required: true %>
         <%= form.date_field :start_date, required: true %>
       </div>
       <div class="form-group">
@@ -82,7 +80,8 @@
           <%= form.number_field :temp_1, placeholder: "Temp (°F)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :weather_summary_1, placeholder: "Condition (e.g. Sunny)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :wind_1, placeholder: "Wind (e.g. 5mph N)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
-          <%= form.text_field :precip_1, placeholder: "Precipitation", style: "width: 100%;" %>
+          <%= form.text_field :precip_1, placeholder: "Precipitation", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
+          <%= form.text_field :visibility_1, placeholder: "Visibility", style: "width: 100%;" %>
           
           <button type="button" class="btn-secondary weather-fetch-btn" 
                   data-action="click->report-form#fetchWeather" 
@@ -98,7 +97,8 @@
           <%= form.number_field :temp_2, placeholder: "Temp (°F)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :weather_summary_2, placeholder: "Condition", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :wind_2, placeholder: "Wind", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
-          <%= form.text_field :precip_2, placeholder: "Precipitation", style: "width: 100%;" %>
+          <%= form.text_field :precip_2, placeholder: "Precipitation", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
+          <%= form.text_field :visibility_2, placeholder: "Visibility", style: "width: 100%;" %>
 
           <button type="button" class="btn-secondary weather-fetch-btn" 
                   data-action="click->report-form#fetchWeather" 
@@ -114,7 +114,8 @@
           <%= form.number_field :temp_3, placeholder: "Temp (°F)", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :weather_summary_3, placeholder: "Condition", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
           <%= form.text_field :wind_3, placeholder: "Wind", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
-          <%= form.text_field :precip_3, placeholder: "Precipitation", style: "width: 100%;" %>
+          <%= form.text_field :precip_3, placeholder: "Precipitation", class: "mb-2", style: "width: 100%; margin-bottom: 8px;" %>
+          <%= form.text_field :visibility_3, placeholder: "Visibility", style: "width: 100%;" %>
 
           <button type="button" class="btn-secondary weather-fetch-btn" 
                   data-action="click->report-form#fetchWeather" 
@@ -123,6 +124,12 @@
             📍 Auto-Fill
           </button>
         </div>
+      </div>
+      
+      <%# MAESTRO: Surface Conditions - Single field grouped with weather %>
+      <div style="margin-top: 15px; background: #f9fafb; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">
+        <label style="font-weight: 600; color: var(--text-main);">Surface / Site Conditions</label>
+        <%= form.text_field :surface_conditions, placeholder: "e.g. Dry, Muddy, Standing Water in areas...", style: "width: 100%; margin-top: 5px;" %>
       </div>
     </div>
   </div>
@@ -170,29 +177,50 @@
       </div>
     </div>
 
-    <%# --- B. STANDARD COMPLIANCE GRID --- %>
-    <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px;">Site Conditions</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+    <%# --- B. STANDARD COMPLIANCE GRID (Refactored) --- %>
+    <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px;">Site Conditions & Compliance</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 30px;">
       
-      <% render_toggle = ->(field_name, label_text, enum_keys) { %>
-        <div style="border: 1px solid #eee; padding: 10px; border-radius: 6px;">
-          <label style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:8px;"><%= label_text %></label>
-          <div style="display:flex; gap:10px;">
+      <%# MAESTRO: Smart Helper that adds conditional note field %>
+      <% render_compliance_item = ->(field_name, label_text, note_field, enum_keys) { %>
+        <%# Determine which key triggers the note (logic: ends with '_no') %>
+        <% no_key = enum_keys.find { |k| k.end_with?('_no') } %>
+        
+        <div style="border: 1px solid #eee; padding: 15px; border-radius: 6px; background: #fff;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:8px;"><%= label_text %></label>
+          
+          <div style="display:flex; gap:15px; margin-bottom: 10px;">
             <% enum_keys.each do |k| %>
-               <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
-                 <%= form.radio_button field_name, k %>
+               <label style="font-size:0.85rem; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                 <%# Logic: All buttons trigger the toggle. Only the 'no_key' makes it visible. %>
+                 <%= form.radio_button field_name, k,
+                     data: { 
+                       action: "change->report-form#toggleSection", 
+                       target_id: "#{field_name}-note", 
+                       valid_values: [no_key].to_json 
+                     } 
+                 %>
                  <%= k.split('_').last.capitalize %>
                </label>
             <% end %>
           </div>
+
+          <%# Conditional Note Field %>
+          <div id="<%= field_name %>-note" style="display: none;">
+            <%= form.text_area note_field, rows: 2, placeholder: "Explain non-compliance...", style: "width:100%; border-color: var(--border-alert);" %>
+          </div>
         </div>
       <% } %>
 
-      <% render_toggle.call(:traffic_control, "Traffic Control", Report.traffic_controls.keys) %>
-      <% render_toggle.call(:environmental, "Environmental", Report.environmentals.keys) %>
-      <% render_toggle.call(:security, "Security", Report.securities.keys) %>
-      <% render_toggle.call(:air_ops_coordination, "Air Ops Coord", Report.air_ops_coordinations.keys) %>
-      <% render_toggle.call(:swppp_controls, "SWPPP Controls", Report.swppp_controls.keys) %>
+      <%# New Items %>
+      <% render_compliance_item.call(:phasing_compliance, "Phasing Exhibit Compliance?", :phasing_compliance_note, Report.phasing_compliances.keys) %>
+      <% render_compliance_item.call(:security, "OPS Security Compliance?", :security_note, Report.securities.keys) %>
+      <% render_compliance_item.call(:environmental, "Environmental Regulation Compliance?", :environmental_note, Report.environmentals.keys) %>
+      
+      <%# Existing Items %>
+      <% render_compliance_item.call(:traffic_control, "Traffic Control", :traffic_control_note, Report.traffic_controls.keys) %>
+      <% render_compliance_item.call(:air_ops_coordination, "Air Ops Coordination", :air_ops_note, Report.air_ops_coordinations.keys) %>
+      <% render_compliance_item.call(:swppp_controls, "SWPPP Controls", :swppp_note, Report.swppp_controls.keys) %>
     </div>
 
     <hr style="border-top: 1px solid #e5e7eb; margin: 30px 0;">

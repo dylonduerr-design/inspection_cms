@@ -15,10 +15,10 @@ class ReportsController < ApplicationController
     # Inspectors should only see their own reports in 'creating' or 'revise' stages.
     # For all other stages (QC, Authorization), we show the global list.
     @reports = if ['creating', 'revise'].include?(params[:status])
-                 current_user.reports 
-               else
-                 Report.all
-               end
+                  current_user.reports 
+                else
+                  Report.all
+                end
 
     # 3. FILTER: Actually apply the status filter
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
@@ -46,7 +46,6 @@ class ReportsController < ApplicationController
     if params[:project_id].present?
       project = Project.find_by(id: params[:project_id])
       @report.project = project if project
-      @report.crew_entries.build if @report.crew_entries.empty?
     end
 
     # 3. Save Shell Record (validate: false)
@@ -59,14 +58,15 @@ class ReportsController < ApplicationController
 
   # GET /reports/1/edit
   def edit
+    # MAESTRO: Auto-build empty rows so the form isn't empty
     @report.placed_quantities.build if @report.placed_quantities.empty?
     @report.equipment_entries.build if @report.equipment_entries.empty?
+    
+    # MAESTRO: Auto-spawn crew entry so it appears by default
     @report.crew_entries.build if @report.crew_entries.empty?
   end
 
   # POST /reports
-  # Note: With Draft Pattern, this action is rarely hit (since 'new' redirects to 'edit' -> 'update'),
-  # but we keep it for fallback or API usage.
   def create
     @report = current_user.reports.build(report_params)
     @report.status ||= :creating
@@ -144,22 +144,18 @@ class ReportsController < ApplicationController
     end
 
     def apply_search_filters
-      # NOTE: Status filtering is now handled in the index action!
-
       @reports = @reports.filter_by_inspector(params[:inspector]) if params[:inspector].present?
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
 
       # Updated Precip Filter
-      # We assume the user wants to find records with "At least X amount of rain"
       if params[:precip_min].present?
-         max = params[:precip_max].presence || 100 # Default max if user leaves it blank
+         max = params[:precip_max].presence || 100 
          @reports = @reports.filter_by_precip_range(params[:precip_min], max)
       end
 
       # Date Range Filter
       if params[:start_date].present?
-        # Ensure we handle the end date if the scope expects a range
         end_date = params[:end_date].presence || params[:start_date]
         @reports = @reports.filter_by_date_range(params[:start_date], end_date) 
       end
@@ -218,13 +214,25 @@ class ReportsController < ApplicationController
         :precip_1, :precip_2, :precip_3,
         :weather_summary_1, :weather_summary_2, :weather_summary_3,
         :weather, :temperature,
+        
+        # MAESTRO: New Weather Fields
+        :visibility_1, :visibility_2, :visibility_3,
+        :surface_conditions,
+
         :station_start, :station_end, :plan_sheet, :relevant_docs,
         
         # --- 3. COMPLIANCE & SAFETY ---
         :deficiency_status, :deficiency_desc,
-        :traffic_control, :environmental, :security, :safety_incident, 
-        :air_ops_coordination, :swppp_controls,
-        :safety_desc, :commentary,
+        :safety_incident, :safety_desc,
+        :commentary,
+        
+        # MAESTRO: Compliance Fields with Notes
+        :traffic_control, :traffic_control_note,
+        :environmental, :environmental_note,
+        :security, :security_note,
+        :air_ops_coordination, :air_ops_note,
+        :swppp_controls, :swppp_note,
+        :phasing_compliance, :phasing_compliance_note,
 
         # --- 4. TEXT AREAS ---
         :additional_activities, :additional_info,
@@ -245,7 +253,6 @@ class ReportsController < ApplicationController
           :id, :bid_item_id, :quantity, :notes, :_destroy, 
           :checklist_answers 
         ],
-        # MAESTRO: Added to support nested checklists if needed in future
         checklist_entries_attributes: [:id, :spec_item_id, :_destroy, checklist_answers: {}],
 
         qa_entries_attributes: [

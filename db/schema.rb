@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_09_235950) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -197,6 +197,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_09_235950) do
     t.integer "electrician_count"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "visibility_1"
+    t.string "visibility_2"
+    t.string "visibility_3"
+    t.string "surface_conditions"
+    t.integer "phasing_compliance", default: 0
+    t.text "phasing_compliance_note"
+    t.text "traffic_control_note"
+    t.text "environmental_note"
+    t.text "security_note"
+    t.text "air_ops_note"
+    t.text "swppp_note"
     t.index ["phase_id"], name: "index_reports_on_phase_id"
     t.index ["project_id"], name: "index_reports_on_project_id"
     t.index ["user_id"], name: "index_reports_on_user_id"

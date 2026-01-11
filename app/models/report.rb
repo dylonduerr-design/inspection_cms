@@ -13,23 +13,21 @@ class Report < ApplicationRecord
   # --- NESTED ENTRIES (The Big Four) ---
   
   # 1. PLACED QUANTITIES (BID ITEMS)
-  # MAESTRO CHANGE: We now reject this row if 'bid_item_id' is missing. 
-  # This prevents crashes if the user leaves the default row blank.
+  # Reject if 'bid_item_id' is missing.
   has_many :placed_quantities, dependent: :destroy
   accepts_nested_attributes_for :placed_quantities, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['bid_item_id'].blank? }
 
   # 2. EQUIPMENT
-  # Rejects if no description (make_model) is provided.
+  # Reject if no description (make_model) is provided.
   has_many :equipment_entries, dependent: :destroy
   accepts_nested_attributes_for :equipment_entries, 
                                 allow_destroy: true, 
                                 reject_if: proc { |att| att['make_model'].blank? }
 
   # 3. CREW
-  # MAESTRO CHANGE: Rejects if 'contractor' is blank. 
-  # This allows the auto-spawned crew row to be ignored if unused.
+  # Reject if 'contractor' is blank.
   has_many :crew_entries, dependent: :destroy
   accepts_nested_attributes_for :crew_entries, 
                                 allow_destroy: true, 
@@ -47,7 +45,6 @@ class Report < ApplicationRecord
   has_many :checklist_entries, dependent: :destroy
 
   # --- 3. VALIDATIONS ---
-  # Note: created with 'validate: false' in draft mode, but these run on update/submit.
   validates :start_date, presence: true
   validates :project, presence: true
   validates :phase, presence: true
@@ -67,6 +64,9 @@ class Report < ApplicationRecord
   enum air_ops_coordination:  { air_na: 0, air_yes: 1, air_no: 2 }
   enum swppp_controls:        { swppp_na: 0, swppp_yes: 1, swppp_no: 2 }
 
+  # MAESTRO: The Missing Link!
+  enum phasing_compliance:    { phase_na: 0, phase_yes: 1, phase_no: 2 }
+
   # --- 5. SEARCH SCOPES ---
   scope :filter_by_inspector, ->(query) { 
     joins(:user).where("users.email ILIKE ?", "%#{query}%") 
@@ -78,7 +78,7 @@ class Report < ApplicationRecord
     where(start_date: start_date..end_date) 
   }
 
-  # Smart Precip Filter (Casts strings like '0.50' to numbers for comparison)
+  # Smart Precip Filter
   scope :filter_by_precip_range, ->(min, max) {
     safe_cast = ->(col) { "CASE WHEN #{col} ~ '^[0-9]+(\\.[0-9]+)?$' THEN #{col}::numeric ELSE 0 END" }
     where(
