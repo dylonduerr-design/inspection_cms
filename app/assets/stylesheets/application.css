@@ -481,3 +481,156 @@ dialog::backdrop {
   cursor: pointer;
   margin-left: auto; /* Pushes delete button to the far right */
 }
+
+/* 1. Context Header (The Project Selector) */
+.context-header {
+  background: var(--bg-card);
+  padding: 20px 25px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.context-selector {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.context-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* The big dropdown styling */
+.project-select {
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 8px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--primary);
+  background: var(--bg-hover);
+  cursor: pointer;
+  min-width: 300px;
+  transition: all 0.2s ease;
+}
+
+.project-select:hover, .project-select:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+}
+
+.context-form {
+  margin: 0;
+}
+
+/* 2. Toolbar Row (The Alignment Magic) */
+.toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; /* Aligns tabs bottom with buttons */
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0; /* Connects visually to the filter card */
+  padding-bottom: 0;
+}
+
+/* Override existing dashboard-tabs margin */
+.dashboard-tabs {
+  margin-bottom: -1px; /* Pushes active tab border over the line */
+  border-bottom: none; /* Handled by toolbar-row */
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 10px; /* Gives breathing room above the line */
+}
+
+/* 3. Small Button Utility */
+.btn-sm {
+  padding: 6px 16px;
+  font-size: 0.85rem;
+}
+
+/* 4. Filter Card Adjustment */
+/* Ensure the filter card looks attached to the tabs */
+.filter-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+  margin-top: 0;
+}
+
+/* 1. Compliance Grid (Replaces the Table) */
+.compliance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.compliance-item {
+  background: var(--bg-body); /* Subtle contrast against the white card */
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.compliance-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+/* 2. Checklist Summary Cards (The Spec Results) */
+.checklist-summary-grid {
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
+  gap: 20px;
+}
+
+.checklist-summary-card {
+  border: 1px solid var(--border-color); 
+  border-radius: 8px; 
+  overflow: hidden;
+  background: var(--bg-card);
+  height: 100%; /* Ensures equal height in grid rows */
+  box-shadow: var(--shadow-sm);
+}
+
+.checklist-header {
+  background: var(--bg-header); 
+  padding: 12px 15px; 
+  border-bottom: 1px solid var(--border-color); 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+}
+
+.checklist-code { 
+  font-weight: 700; 
+  color: var(--primary); 
+  font-size: 1rem;
+}
+
+.checklist-desc { 
+  font-size: 0.8rem; 
+  color: var(--text-muted); 
+  max-width: 60%;
+  text-align: right;
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis;
+}

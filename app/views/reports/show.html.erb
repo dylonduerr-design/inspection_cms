@@ -81,68 +81,63 @@
     </div>
   </div>
 
-  <%# --- 2. SITE COMPLIANCE --- %>
+  <%# --- 2. SITE COMPLIANCE (UPDATED: Grid Layout) --- %>
   <div class="report-section">
     <h3>Site Compliance</h3>
 
+    <%# Alerts for Issues %>
     <% if @report.yes_deficiency? || @report.cdr? || @report.ncr? %>
-      <div class="alert alert-danger" style="margin-bottom: 15px;">
+      <div class="alert alert-danger">
         <strong>Deficiency Reported:</strong> <%= @report.deficiency_status.humanize %>
         <p style="margin-top: 5px;"><%= @report.deficiency_desc %></p>
       </div>
     <% end %>
 
     <% if @report.safety_yes? %>
-      <div class="alert alert-danger" style="margin-bottom: 15px;">
+      <div class="alert alert-danger">
         <strong>Safety Incident Reported</strong>
         <p style="margin-top: 5px;"><%= @report.safety_desc %></p>
       </div>
     <% end %>
 
-    <table class="modern-table">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th>Status</th>
-          <th>Category</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>Traffic Control</strong></td>
-          <td><%= @report.traffic_control&.humanize %></td>
-          <td><strong>Environmental</strong></td>
-          <td><%= @report.environmental&.humanize %></td>
-        </tr>
-        <tr>
-          <td><strong>Security</strong></td>
-          <td><%= @report.security&.humanize %></td>
-          <td><strong>Air Ops</strong></td>
-          <td><%= @report.air_ops_coordination&.humanize %></td>
-        </tr>
-        <tr>
-          <td><strong>SWPPP Controls</strong></td>
-          <td><%= @report.swppp_controls&.humanize %></td>
-          <td></td><td></td>
-        </tr>
-      </tbody>
-    </table>
+    <%# The New Grid Layout %>
+    <div class="compliance-grid">
+      <%# Helper lambda to render items cleanly %>
+      <% render_comp_item = ->(label, val) { %>
+        <div class="compliance-item">
+          <span class="compliance-label"><%= label %></span>
+          <% if val.to_s.end_with?('no') %>
+             <span class="status-badge status-revise">Non-Compliant</span>
+          <% elsif val.to_s.end_with?('yes') %>
+             <span class="status-badge status-authorization">Compliant</span>
+          <% else %>
+             <span class="text-muted">N/A</span>
+          <% end %>
+        </div>
+      <% } %>
+
+      <% render_comp_item.call("Traffic Control", @report.traffic_control) %>
+      <% render_comp_item.call("Environmental", @report.environmental) %>
+      <% render_comp_item.call("Security", @report.security) %>
+      <% render_comp_item.call("Air Ops", @report.air_ops_coordination) %>
+      <% render_comp_item.call("SWPPP Controls", @report.swppp_controls) %>
+      <% render_comp_item.call("Phasing Exhibit", @report.phasing_compliance) %>
+    </div>
   </div>
 
-<%# --- NEW SECTION: SPECIFICATION CHECKLISTS --- %>
+  <%# --- 3. SPECIFICATION CHECKLISTS (UPDATED: Clean Cards) --- %>
   <% if @report.checklist_entries.any? %>
     <div class="report-section">
       <h3>Specification Compliance Checklists</h3>
       
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+      <div class="checklist-summary-grid">
         <% @report.checklist_entries.each do |entry| %>
-          <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
-            <div style="background: var(--bg-header); padding: 10px 15px; border-bottom: 1px solid var(--border-color); font-weight: bold; display: flex; justify-content: space-between;">
-              <span><%= entry.spec_item.code %></span>
-              <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);"><%= entry.spec_item.description.truncate(30) %></span>
+          <div class="checklist-summary-card">
+            <div class="checklist-header">
+              <span class="checklist-code"><%= entry.spec_item.code %></span>
+              <span class="checklist-desc"><%= entry.spec_item.description %></span>
             </div>
-            
+             
             <table class="modern-table" style="margin: 0;">
               <tbody>
                 <% entry.checklist_answers.each do |question, answer| %>
@@ -165,7 +160,7 @@
     </div>
   <% end %>
 
-  <%# --- 3. QUALITY ASSURANCE --- %>
+  <%# --- 4. QUALITY ASSURANCE --- %>
   <% if @report.qa_entries.any? %>
     <div class="report-section">
       <h3>Quality Assurance</h3>
@@ -189,11 +184,9 @@
                 <% elsif qa.result == 'qa_fail' %>
                   <span class="text-danger">Fail</span>
                 <% else %>
-                  <%# Clean up "Qa Pending" to just "Pending" %>
                   <%= qa.result&.humanize&.gsub("Qa ", "")&.titleize %>
                 <% end %>
               </td>
-              <%# --- FIX IS HERE: Changed .note to .remarks --- %>
               <td><%= qa.remarks %></td> 
             </tr>
           <% end %>
@@ -202,11 +195,11 @@
     </div>
   <% end %>
 
-  <%# --- 4. CREW & EQUIPMENT (UPDATED) --- %>
+  <%# --- 5. WORKFORCE & EQUIPMENT --- %>
   <div class="report-section">
     <h3>Workforce & Equipment</h3>
     
-    <%# NEW WORKFORCE TABLE %>
+    <%# Workforce %>
     <% if @report.crew_entries.any? %>
       <h4 style="margin-top:0;">Workforce Log</h4>
       <table class="modern-table" style="margin-bottom: 20px;">
@@ -239,7 +232,7 @@
       <p class="text-muted-sm">No workforce recorded.</p>
     <% end %>
 
-    <%# UPDATED EQUIPMENT TABLE %>
+    <%# Equipment %>
     <h4 style="margin-top: 15px;">Equipment Log</h4>
     <% if @report.equipment_entries.any? %>
       <table class="modern-table">
@@ -267,7 +260,7 @@
     <% end %>
   </div>
 
-  <%# --- 5. INSPECTION ENTRIES (FIXED: Removed Location) --- %>
+  <%# --- 6. QUANTITIES & NOTES --- %>
   <div class="report-section">
     <h3>Quantities & Inspection Entries</h3>
     
@@ -286,8 +279,7 @@
           </div>
           
           <div style="display: block;">
-            <%# FIXED: Location Removed %>
-            <p style="margin-bottom: 5px;"><strong>Notes:</strong> <%= entry.notes.present? ? entry.notes : "-" %></p>
+            <p style="margin-bottom: 5px;"><strong>Notes:</strong> <%= entry.notes.presence || "-" %></p>
 
             <% if entry.checklist_answers.present? %>
               <div style="background: #f7fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0; margin-top: 10px;">
@@ -310,7 +302,7 @@
     <% end %>
   </div>
 
-  <%# --- 6. ADDITIONAL INFORMATION --- %>
+  <%# --- 7. ADDITIONAL INFORMATION --- %>
   <% if @report.additional_activities.present? || @report.additional_info.present? || @report.commentary.present? %>
     <div class="report-section">
       <h3>Additional Information</h3>
@@ -338,7 +330,7 @@
     </div>
   <% end %>
 
-  <%# --- 7. PHOTOS & DOCUMENTS --- %>
+  <%# --- 8. PHOTOS & DOCUMENTS --- %>
   <div class="report-section">
     <h3>Attached Documents & Photos</h3>
     
@@ -353,7 +345,7 @@
                     <%= image_tag attach.file.representation(resize_to_limit: [600, 600]) %>
                   <% end %>
                 <% else %>
-                  <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank", style: "text-decoration: none;" do %>
+                   <%= link_to rails_blob_path(attach.file, disposition: "attachment"), target: "_blank", style: "text-decoration: none;" do %>
                     <div class="doc-icon">📄</div>
                   <% end %>
                 <% end %>
@@ -361,7 +353,7 @@
             </div>
             
             <div class="caption">
-              <%= attach.caption.present? ? attach.caption : attach.file.filename %>
+              <%= attach.caption.presence || attach.file.filename %>
             </div>
             
             <div class="download-link">
@@ -375,7 +367,7 @@
     <% end %>
   </div>
 
-  <%# --- 8. WORKFLOW ACTIONS --- %>
+  <%# --- 9. WORKFLOW ACTIONS --- %>
   <div class="action-bar-container">
     <% if @report.creating? || @report.revise? %>
       <div class="primary-actions">
@@ -406,7 +398,7 @@
     <% end %>
   </div>
 
-  <%# --- 9. ACTIVITY LOG --- %>
+  <%# --- 10. ACTIVITY LOG --- %>
   <div class="report-section">
     <h3>Activity Log</h3>
     <% if @report.activity_logs.any? %>

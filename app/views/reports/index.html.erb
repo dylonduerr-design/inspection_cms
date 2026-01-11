@@ -1,53 +1,55 @@
 <div class="dashboard-container">
 
-  <%# --- 1. CONTEXT HEADER (The "Basket" Selector) --- %>
-  <div style="background: var(--bg-card); padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-radius: 12px; box-shadow: var(--shadow-sm);">
-    
-    <div style="display: flex; align-items: center; gap: 15px;">
-      <%# A. Label %>
-      <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-        Current Project
-      </div>
+  <%# --- 1. CONTEXT HEADER: Project Selection & Directory --- %>
+  <div class="context-header">
+    <div class="context-selector">
+      <div class="context-label">Current Project</div>
       
-      <%# B. The "Big" Dropdown %>
       <%# We use a simple form that submits on change to "set the context" %>
-      <%= form_with url: reports_path, method: :get, local: true, style: "margin:0;" do |f| %>
-        <%# Keep existing status/filters if possible, or reset them. Here we keep status. %>
+      <%= form_with url: reports_path, method: :get, local: true, class: "context-form" do |f| %>
+        <%# Keep existing status if present so we don't switch tabs unexpectedly %>
         <%= hidden_field_tag :status, params[:status] %>
         
         <%= f.collection_select :project_id, Project.all, :id, :name, 
             { include_blank: "All Projects (Global View)", selected: params[:project_id] }, 
             { 
               onchange: "this.form.submit()", 
-              style: "font-size: 1.25rem; font-weight: 600; padding: 8px 15px; border: 1px solid var(--border-color); border-radius: 6px; color: var(--primary); background: var(--bg-hover); cursor: pointer; min-width: 300px;" 
+              class: "project-select"
             } 
         %>
       <% end %>
     </div>
 
-    <div class="header-actions">
-      <%# C. Context-Aware Buttons %>
-      <%= link_to "Export CSV", reports_path(request.query_parameters.merge(format: :csv)), class: "btn btn-secondary" %>
-      
-      <%# This button uses the ID from the URL params, which the dropdown above sets %>
-      <%= link_to "+ New Report", new_report_path(project_id: params[:project_id]), class: "btn btn-primary", style: "margin-left: 10px;" %>
-      
-      <%= link_to "Directory", projects_path, class: "btn btn-clear", style: "margin-left: 5px;" %>
+    <div class="context-actions">
+      [cite_start]<%# The Directory button stays here as requested [cite: 490] %>
+      <%= link_to "Directory", projects_path, class: "btn btn-clear" %>
     </div>
   </div>
 
-  <%# --- 2. TABS --- %>
-  <div class="dashboard-tabs">
-    <% statuses = ['creating', 'qc_review', 'revise', 'authorization', 'all'] %>
-    <% statuses.each do |status| %>
-      <%= link_to status.humanize.titleize, 
-          reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id, :result).merge(status: status)), 
-          class: "tab-link #{'active' if params[:status] == status || (params[:status].blank? && status == 'creating')}" 
-      %>
-    <% end %>
+  <%# --- 2. TOOLBAR ROW: Tabs (Left) & Actions (Right) --- %>
+  <div class="toolbar-row">
+    
+    <%# A. Tabs %>
+    <div class="dashboard-tabs">
+      <% statuses = ['creating', 'qc_review', 'revise', 'authorization', 'all'] %>
+      <% statuses.each do |status| %>
+        <%= link_to status.humanize.titleize, 
+            reports_path(params.permit(:inspector, :project_id, :start_date, :end_date, :bid_item_id, :result).merge(status: status)), 
+            class: "tab-link #{'active' if params[:status] == status || (params[:status].blank? && status == 'creating')}" 
+        %>
+      <% end %>
+    </div>
+
+    <%# B. Operational Actions (Moved above search bar) %>
+    <div class="toolbar-actions">
+      <%= link_to "Export CSV", reports_path(request.query_parameters.merge(format: :csv)), class: "btn btn-secondary btn-sm" %>
+      
+      [cite_start]<%# This button uses the ID from the URL params to pre-select the project [cite: 490] %>
+      <%= link_to "+ New Report", new_report_path(project_id: params[:project_id]), class: "btn btn-primary btn-sm" %>
+    </div>
   </div>
 
-  <%# --- 3. SECONDARY FILTERS (Collapsed Project Filter removed from here) --- %>
+  <%# --- 3. FILTERS (Search Bar) --- %>
   <div class="filter-card">
     <%= form_with url: reports_path, method: :get, local: true, class: "search-form" do |form| %>
       <%= hidden_field_tag :status, params[:status] %>
@@ -76,7 +78,7 @@
 
         <div class="filter-group">
           <label>Contains Item</label>
-          <%# Only show Bid Items for the selected project to keep it clean %>
+          [cite_start]<%# Only show Bid Items for the selected project to keep it clean [cite: 496] %>
           <% items = params[:project_id].present? ? BidItem.where(project_id: params[:project_id]) : BidItem.all %>
           <%= form.collection_select :bid_item_id, items, :id, :code, { include_blank: "Any Item" }, { selected: params[:bid_item_id], class: "form-input" } %>
         </div>
@@ -89,7 +91,7 @@
     <% end %>
   </div>
 
-  <%# --- 4. TABLE (Unchanged) --- %>
+  <%# --- 4. DATA TABLE --- %>
   <div class="table-card">
     <table class="modern-table dashboard-table">
       <thead>
@@ -138,4 +140,5 @@
   <div class="dashboard-footer">
     Showing <%= @reports.count %> reports
   </div>
+
 </div>
