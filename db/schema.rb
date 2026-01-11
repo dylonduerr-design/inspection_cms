@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_11_163344) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -61,6 +61,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
     t.datetime "updated_at", null: false
     t.bigint "spec_item_id", null: false
     t.bigint "project_id"
+    t.index ["project_id", "code"], name: "index_bid_items_on_project_id_and_code", unique: true
     t.index ["project_id"], name: "index_bid_items_on_project_id"
     t.index ["spec_item_id"], name: "index_bid_items_on_spec_item_id"
   end
@@ -78,8 +79,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
   create_table "crew_entries", force: :cascade do |t|
     t.bigint "report_id", null: false
     t.string "contractor"
-    t.string "foreman"
-    t.string "superintendent"
     t.integer "laborer_count"
     t.integer "operator_count"
     t.integer "survey_count"
@@ -87,6 +86,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "foreman_count", default: 0
+    t.integer "superintendent_count", default: 0
     t.index ["report_id"], name: "index_crew_entries_on_report_id"
   end
 
@@ -160,8 +161,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
     t.integer "result"
     t.string "shift_start"
     t.string "shift_end"
-    t.string "foreman"
-    t.string "superintendent"
     t.integer "temp_1"
     t.integer "temp_2"
     t.integer "temp_3"
@@ -191,10 +190,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
     t.text "commentary"
     t.text "additional_activities"
     t.text "additional_info"
-    t.integer "laborer_count"
-    t.integer "operator_count"
-    t.integer "survey_count"
-    t.integer "electrician_count"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "visibility_1"
@@ -209,7 +204,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
     t.text "air_ops_note"
     t.text "swppp_note"
     t.index ["phase_id"], name: "index_reports_on_phase_id"
+    t.index ["project_id", "status"], name: "index_reports_on_project_id_and_status"
     t.index ["project_id"], name: "index_reports_on_project_id"
+    t.index ["start_date"], name: "index_reports_on_start_date"
     t.index ["user_id"], name: "index_reports_on_user_id"
   end
 
@@ -220,6 +217,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_11_135437) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "division"
+    t.index ["code"], name: "index_spec_items_on_code", unique: true
   end
 
   create_table "users", force: :cascade do |t|

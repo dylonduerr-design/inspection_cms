@@ -5,17 +5,22 @@
   <div class="form-row">
      <div class="form-group">
        <label>Contractor</label>
-       <%# Class 'auto-contractor' is used by JS to auto-fill this field %>
+       [cite_start]<%# Class 'auto-contractor' is used by JS to auto-fill this field [cite: 376] %>
        <%= f.text_field :contractor, placeholder: "Contractor Name", class: "auto-contractor" %>
      </div>
+     
      <div class="form-group">
-       <label>Superintendent</label>
-       <%= f.text_field :superintendent, placeholder: "Name" %>
+       <label>Supt (Count)</label>
+       <%# MAESTRO CHANGE: Updated to number_field for :superintendent_count %>
+       <%= f.number_field :superintendent_count, placeholder: "no." %>
      </div>
+     
      <div class="form-group">
-       <label>Foreman</label>
-       <%= f.text_field :foreman, placeholder: "Name" %>
+       <label>Foreman (Count)</label>
+       <%# MAESTRO CHANGE: Updated to number_field for :foreman_count %>
+       <%= f.number_field :foreman_count, placeholder: "no." %>
      </div>
+     
      <div class="form-group">
        <label>Surveyors</label>
        <%= f.number_field :survey_count, placeholder: "no." %>
@@ -39,12 +44,12 @@
      
      <%# --- DELETE BUTTON LOGIC --- %>
      <div class="form-group" style="display:flex; align-items:flex-end;">
-       <%# 1. If saved, render the hidden destroy checkbox %>
+       [cite_start]<%# 1. If saved, render the hidden destroy checkbox [cite: 379] %>
        <% if f.object.persisted? %>
          <div style="display:none;"><%= f.check_box :_destroy %></div>
        <% end %>
 
-       <%# 2. Always show the button. JS removes the DOM element. %>
+       <%# 2. Always show the button. [cite_start]JS removes the DOM element. [cite: 380] %>
        <button type="button" class="remove-row-btn" 
                data-action="click->report-form#removeAssociation" 
                style="color: red;">
