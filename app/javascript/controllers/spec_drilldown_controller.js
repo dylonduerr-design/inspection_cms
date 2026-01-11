@@ -1,28 +1,45 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
+  // These targets must match the data-spec-drilldown-target attributes in your HTML
   static targets = ["modal", "viewDivisions", "viewSpecs", "viewForm", "specListContainer", "modalTitle", "checklistFormPlaceholder"]
-  // NEW: Robustly capture the ID passed from the view
+  
+  // Captures the Report ID (if it exists)
   static values = { reportId: String }
 
   connect() {
-    // Parse the big JSON blob of specs once
+    // 1. Load the spec data from the JSON script tag
     const dataScript = document.getElementById("spec-data-store");
     if (dataScript) {
-      this.allSpecs = JSON.parse(dataScript.textContent);
+      try {
+        this.allSpecs = JSON.parse(dataScript.textContent);
+        console.log("Maestro: Specs loaded successfully", this.allSpecs.length);
+      } catch (e) {
+        console.error("Maestro Error: Could not parse Spec JSON", e);
+        this.allSpecs = [];
+      }
+    } else {
+      console.warn("Maestro Warning: spec-data-store script not found.");
+      this.allSpecs = [];
     }
     this.currentSpec = null;
   }
 
-  // --- NAVIGATION ---
+  // --- MODAL ACTIONS ---
+
   openModal() {
+    console.log("Maestro: Opening Spec Modal");
+    // Show the dialog
     this.modalTarget.showModal();
+    // Reset to the first view (Divisions)
     this.showDivisions();
   }
 
   closeModal() {
     this.modalTarget.close();
   }
+
+  // --- VIEW SWITCHING ---
 
   showDivisions() {
     this.viewDivisionsTarget.style.display = "block";
@@ -32,42 +49,44 @@ export default class extends Controller {
   }
   
   showSpecs() {
+    this.viewDivisionsTarget.style.display = "none";
     this.viewSpecsTarget.style.display = "block";
     this.viewFormTarget.style.display = "none";
   }
 
+  // --- SELECTION LOGIC ---
+
   selectDivision(event) {
+    // 1. Get the division name from the clicked button
     const divisionName = event.currentTarget.dataset.division;
     
-    // Filter specs by division
+    // 2. Filter specs
     const specs = this.allSpecs.filter(s => s.division === divisionName);
-
-    // Render list
+    
+    // 3. Render the list of specs
     let html = "";
     specs.forEach(spec => {
       html += `
-        <button type="button" class="list-item" 
-                style="width:100%; text-align:left; padding:12px; margin-bottom:8px; background:white; border:1px solid #ddd; border-radius:6px; cursor:pointer;"
+        <button type="button" class="spec-selection-btn" 
                 data-action="click->spec-drilldown#selectSpec" 
                 data-id="${spec.id}">
-          <strong style="color:#2563eb;">${spec.code}</strong><br>
-          <span style="font-size:0.9em; color:#666;">${spec.description}</span>
+          <strong style="color: var(--primary);">${spec.code}</strong>
+          <span class="text-muted-sm">${spec.description}</span>
         </button>
       `;
     });
     this.specListContainerTarget.innerHTML = html;
     
-    // Switch Views
-    this.viewDivisionsTarget.style.display = "none";
-    this.viewSpecsTarget.style.display = "block";
+    // 4. Switch View
     this.modalTitleTarget.innerText = divisionName;
+    this.showSpecs();
   }
 
   selectSpec(event) {
     const specId = parseInt(event.currentTarget.dataset.id);
     this.currentSpec = this.allSpecs.find(s => s.id === specId);
     
-    // Pass empty object {} for new checklists
+    // Pass empty object {} because this is a new checklist
     this.renderChecklistForm(this.currentSpec.checklist_questions, {});
     
     this.viewSpecsTarget.style.display = "none";
@@ -75,16 +94,14 @@ export default class extends Controller {
     this.modalTitleTarget.innerText = `Checklist: ${this.currentSpec.code}`;
   }
 
-  // Handle clicking the "Edit" button on an existing card
   editSpec(event) {
+    // Handle editing an existing card
     const card = event.target.closest(".gallery-card");
     const specId = parseInt(card.dataset.specId);
     const savedAnswers = JSON.parse(card.dataset.answers || "{}");
-
-    // Find the full spec object from our data store
+    
     this.currentSpec = this.allSpecs.find(s => s.id === specId);
-
-    // Open the modal directly to the form, passing the saved answers
+    
     this.modalTarget.showModal();
     this.renderChecklistForm(this.currentSpec.checklist_questions, savedAnswers);
     
@@ -95,19 +112,19 @@ export default class extends Controller {
   }
 
   // --- FORM RENDERING ---
+
   renderChecklistForm(questions, savedAnswers = {}) {
     let html = `<div style="padding: 10px;">`;
     html += `<p style="margin-bottom: 20px;"><strong>${questions.length} items to check:</strong></p>`;
     
     questions.forEach((q) => {
       const isChecked = (val) => savedAnswers[q] === val ? "checked" : "";
-      
-      // Sanitized key for the name attribute
+      // Create a safe key for the HTML name attribute
       const safeKey = q.replace(/"/g, '&quot;');
 
       html += `
-        <div class="checklist-item" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-          <p style="margin: 0 0 5px 0;">${q}</p>
+        <div class="checklist-item" style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+          <p style="margin: 0 0 5px 0; font-size: 0.95rem;">${q}</p>
           <div style="display: flex; gap: 15px;">
             <label><input type="radio" name="answers[${safeKey}]" value="Yes" ${isChecked("Yes")}> Yes</label>
             <label><input type="radio" name="answers[${safeKey}]" value="No" ${isChecked("No")}> No</label>
@@ -119,7 +136,7 @@ export default class extends Controller {
 
     html += `
       <div style="margin-top: 20px; text-align: right;">
-        <button type="button" class="btn-primary-action" data-action="click->spec-drilldown#saveChecklist">Save Checklist</button>
+        <button type="button" class="btn btn-primary" data-action="click->spec-drilldown#saveChecklist">Save Checklist</button>
       </div>
     `;
     html += `</div>`;
@@ -127,97 +144,131 @@ export default class extends Controller {
     this.checklistFormPlaceholderTarget.innerHTML = html;
   }
   
+  // --- SAVING LOGIC (The Critical Fix) ---
+
   saveChecklist(event) {
     const btn = event.target;
     btn.disabled = true;
     btn.innerText = "Saving...";
 
-    // 1. Harvest Answers
+    // 1. Harvest Answers from the Radio Buttons
     const answers = {};
     const radios = this.checklistFormPlaceholderTarget.querySelectorAll('input[type="radio"]:checked');
     
     radios.forEach(radio => {
-      // Extract the original question key from the name attribute
       const keyMatch = radio.name.match(/answers\[(.*?)\]/);
       if (keyMatch) {
-        // We decode HTML entities if necessary, but usually the raw string works here
         answers[keyMatch[1]] = radio.value;
       }
     });
 
-    // 2. Identify Context (ROBUST FIX)
+    // 2. CHECK: Are we in "Draft Mode" (New Report) or "Edit Mode" (Saved Report)?
     if (!this.reportIdValue) {
-       alert("Error: Missing Report ID. Cannot save.");
-       return;
-    }
-    
-    // 3. Send to Server
-    fetch(`/reports/${this.reportIdValue}/checklist_entries`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify({
-        spec_item_id: this.currentSpec.id,
-        answers: answers
+      // --- DRAFT MODE: Inject Hidden Fields ---
+      // We generate a unique ID so Rails knows this is a new nested record
+      const uniqueId = new Date().getTime();
+      
+      const mockData = {
+        spec_code: this.currentSpec.code,
+        spec_desc: this.currentSpec.description,
+        id: null 
+      };
+      
+      this.addBadgeToUI(mockData, answers, uniqueId);
+      this.closeModal();
+      
+      btn.disabled = false;
+      btn.innerText = "Save Checklist";
+
+    } else {
+      // --- SAVED MODE: Use AJAX ---
+      fetch(`/reports/${this.reportIdValue}/checklist_entries`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+          spec_item_id: this.currentSpec.id,
+          answers: answers
+        })
       })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === "success") {
-        this.addBadgeToUI(data, answers); 
-        this.closeModal();
-      } else {
-        alert("Error saving: " + data.message);
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          this.addBadgeToUI(data, answers, null);
+          this.closeModal();
+        } else {
+          alert("Error saving: " + data.message);
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        alert("Network Error");
+      })
+      .finally(() => {
         btn.disabled = false;
         btn.innerText = "Save Checklist";
-      }
-    })
-    .catch(error => {
-      console.error(error);
-      alert("Network Error");
-      btn.disabled = false;
-    });
+      });
+    }
   }
 
-  addBadgeToUI(data, newAnswers) {
+  addBadgeToUI(data, newAnswers, newRecordId = null) {
     const list = document.getElementById("active-checklists-list");
     
     // Remove "No checklists" message
-    const emptyMsg = list.querySelector(".text-muted");
+    const emptyMsg = list.querySelector(".spec-empty-state");
     if (emptyMsg) emptyMsg.remove();
 
-    // Check if badge already exists (update scenario)
+    // Check if card already exists (Update vs Create)
     let card = list.querySelector(`[data-spec-code="${data.spec_code}"]`);
     
     if (card) {
-      // Update existing card
+      // UPDATE EXISTING
       card.dataset.answers = JSON.stringify(newAnswers);
-      card.style.backgroundColor = "#ecfdf5"; // Flash Green
+      // Visual flash
+      card.style.backgroundColor = "#ecfdf5";
       setTimeout(() => card.style.backgroundColor = "", 1000);
+      
+      // If it's a draft mode item, we should ideally update the hidden input too, 
+      // but simpler to just let them delete and re-add for now in draft mode.
+      if (newRecordId) {
+         // Logic to update hidden field value would go here
+         const hiddenInput = card.querySelector(`input[name*="[checklist_answers]"]`);
+         if(hiddenInput) hiddenInput.value = JSON.stringify(newAnswers);
+      }
+
     } else {
-      // Create new card
+      // CREATE NEW
+      let hiddenFields = "";
+      
+      // If NewRecordId is present, we are in Draft Mode -> Inject Hidden Inputs
+      if (newRecordId) {
+        hiddenFields = `
+          <input type="hidden" name="report[checklist_entries_attributes][${newRecordId}][spec_item_id]" value="${this.currentSpec.id}">
+          <input type="hidden" name="report[checklist_entries_attributes][${newRecordId}][checklist_answers]" value='${JSON.stringify(newAnswers)}'>
+        `;
+      }
+
       const html = `
         <div class="gallery-card" 
              style="padding: 15px; text-align: left;"
              data-spec-code="${data.spec_code}"
-             data-spec-id="${data.id}" 
+             data-spec-id="${data.id || ''}" 
              data-answers='${JSON.stringify(newAnswers)}'>
              
+          ${hiddenFields}
+             
           <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">${data.spec_code}</div>
-          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; height: 40px; overflow: hidden;">${data.spec_desc}</div>
+          <div class="text-muted-sm" style="margin-bottom: 10px; height: 40px; overflow: hidden;">${data.spec_desc}</div>
           
           <button type="button" 
-                  class="btn-secondary" 
-                  style="width: 100%; font-size: 0.8rem;"
+                  class="btn-secondary w-full text-muted-sm"
                   data-action="click->spec-drilldown#editSpec">
              ✎ Edit Checklist
           </button>
         </div>
       `;
-      // Ensure grid class exists
-      if (!list.classList.contains("gallery-grid")) list.classList.add("gallery-grid");
       list.insertAdjacentHTML("beforeend", html);
     }
   }

@@ -8,22 +8,21 @@ class ReportsController < ApplicationController
 
   # GET /reports
   def index
-    # 1. DEFAULT: Set the default status to match your View's default tab
+    # 1. DEFAULT: Set the default status
     params[:status] ||= 'creating'
 
-    # 2. SCOPE: Determine base collection (Security/Workflow logic)
-    # Inspectors should only see their own reports in 'creating' or 'revise' stages.
-    # For all other stages (QC, Authorization), we show the global list.
+    # 2. SCOPE: Determine base collection
+    # Inspectors see their own in 'creating/revise', global view for others.
     @reports = if ['creating', 'revise'].include?(params[:status])
-                  current_user.reports 
-                else
-                  Report.all
-                end
+                 current_user.reports 
+               else
+                 Report.all
+               end
 
-    # 3. FILTER: Actually apply the status filter
+    # 3. FILTER: Apply status filter
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
 
-    # 4. SEARCH: Apply the remaining filters (Date, Project, Inspector)
+    # 4. SEARCH: Apply remaining filters
     apply_search_filters
 
     respond_to do |format|
@@ -38,42 +37,51 @@ class ReportsController < ApplicationController
 
   # GET /reports/new
   def new
-    # --- MAESTRO: DRAFT PATTERN IMPLEMENTATION ---
-    # 1. Initialize with defaults
+    # 1. Initialize empty shell
     @report = current_user.reports.build(status: :creating)
     
-    # 2. Pre-fill Project if passed from Dashboard
+    # 2. Pre-fill Project Data
     if params[:project_id].present?
-      project = Project.find_by(id: params[:project_id])
-      @report.project = project if project
+      @project = Project.find_by(id: params[:project_id])
+      
+      if @project
+        @report.project = @project
+        
+        # Auto-fill header info
+        @report.contractor = @project.respond_to?(:prime_contractor) ? @project.prime_contractor : nil
+        @report.superintendent = @project.respond_to?(:default_superintendent) ? @project.default_superintendent : nil
+      end
     end
 
-    # 3. Save Shell Record (validate: false)
-    if @report.save(validate: false)
-      redirect_to edit_report_path(@report)
-    else
-      redirect_to reports_path, alert: "Could not initialize new report."
-    end
+    # 3. Build Nested Shells (So the form shows empty rows to fill in)
+    @report.placed_quantities.build
+    @report.equipment_entries.build
+    @report.crew_entries.build
+    
+    # Note: We do NOT build checklist_entries here anymore.
+    # 4. Render the 'new' view directly (DO NOT SAVE/REDIRECT)
   end
 
   # GET /reports/1/edit
   def edit
-    # MAESTRO: Auto-build empty rows so the form isn't empty
+    # MAESTRO: Ensure form has empty rows if current data is empty
     @report.placed_quantities.build if @report.placed_quantities.empty?
     @report.equipment_entries.build if @report.equipment_entries.empty?
-    
-    # MAESTRO: Auto-spawn crew entry so it appears by default
     @report.crew_entries.build if @report.crew_entries.empty?
   end
 
   # POST /reports
   def create
+    # This is where the record is actually saved for the first time.
+    # The params will include the Report attributes AND the nested checklist answers.
     @report = current_user.reports.build(report_params)
-    @report.status ||= :creating
+    @report.status = :creating # Enforce status
 
     if @report.save
       redirect_to report_url(@report), notice: "Report was successfully created."
     else
+      # If validation fails, we must re-set the @project for the view to render
+      @project = @report.project 
       render :new, status: :unprocessable_entity
     end
   end
@@ -90,7 +98,7 @@ class ReportsController < ApplicationController
   # DELETE /reports/1
   def destroy
     @report.destroy!
-    redirect_to reports_url, notice: "Report was successfully destroyed."
+    redirect_to reports_url, notice: "Report was successfully deleted."
   end
 
   # --- Workflow Actions ---
@@ -113,26 +121,20 @@ class ReportsController < ApplicationController
 
   # --- EXPORT TO WORD ACTION ---
   def export_word
-    # 1. Delegate the work to your Service Class
     temp_file = WordReportExporter.generate(@report)
 
     if temp_file
       begin
-        # 2. Read the binary data from the temp file path
         file_data = File.binread(temp_file.path)
-        
-        # 3. Send the data to the browser
         send_data file_data, 
                   filename: "DIR_#{@report.dir_number}_#{@report.start_date}.docx",
                   type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                   disposition: 'attachment'
       ensure
-        # 4. Clean up the temp file
         temp_file.close
         temp_file.unlink
       end
     else
-      # Fallback if the template is missing
       redirect_to @report, alert: "Could not generate report. Template missing."
     end
   end
@@ -148,13 +150,11 @@ class ReportsController < ApplicationController
       @reports = @reports.filter_by_project(params[:project_id]) if params[:project_id].present?
       @reports = @reports.filter_by_bid_item(params[:bid_item_id]) if params[:bid_item_id].present?
 
-      # Updated Precip Filter
       if params[:precip_min].present?
          max = params[:precip_max].presence || 100 
          @reports = @reports.filter_by_precip_range(params[:precip_min], max)
       end
 
-      # Date Range Filter
       if params[:start_date].present?
         end_date = params[:end_date].presence || params[:start_date]
         @reports = @reports.filter_by_date_range(params[:start_date], end_date) 
@@ -175,8 +175,6 @@ class ReportsController < ApplicationController
         
         reports.each do |report|
           inspector_name = report.user&.email || "Unknown"
-          
-          # Combine weather for CSV readability
           temps = [report.temp_1, report.temp_2, report.temp_3].compact.join("/")
           winds = [report.wind_1, report.wind_2, report.wind_3].compact.join("/")
 
@@ -206,7 +204,8 @@ class ReportsController < ApplicationController
         :dir_number, :project_id, :phase_id, 
         :status, :result,
         :shift_start, :shift_end,
-        :contractor, 
+        :contractor,
+        :prime_contractor, :superintendent, 
 
         # --- 2. WEATHER & CONDITIONS ---
         :temp_1, :temp_2, :temp_3,
@@ -214,8 +213,6 @@ class ReportsController < ApplicationController
         :precip_1, :precip_2, :precip_3,
         :weather_summary_1, :weather_summary_2, :weather_summary_3,
         :weather, :temperature,
-        
-        # MAESTRO: New Weather Fields
         :visibility_1, :visibility_2, :visibility_3,
         :surface_conditions,
 
@@ -225,8 +222,6 @@ class ReportsController < ApplicationController
         :deficiency_status, :deficiency_desc,
         :safety_incident, :safety_desc,
         :commentary,
-        
-        # MAESTRO: Compliance Fields with Notes
         :traffic_control, :traffic_control_note,
         :environmental, :environmental_note,
         :security, :security_note,
@@ -250,13 +245,16 @@ class ReportsController < ApplicationController
           :id, :make_model, :hours, :quantity, :contractor, :_destroy
         ],
         placed_quantities_attributes: [
-          :id, :bid_item_id, :quantity, :notes, :_destroy, 
+          :id, :bid_item_id, :quantity, :notes, :location, :_destroy, 
           :checklist_answers 
         ],
+        
+        # MAESTRO: This allows flexible JSON/Hash storage for answers
         checklist_entries_attributes: [:id, :spec_item_id, :_destroy, checklist_answers: {}],
 
         qa_entries_attributes: [
-          :id, :qa_type, :location, :result, :note, :_destroy
+          # MAESTRO: Changed :note to :remarks to match your DB schema and View
+          :id, :qa_type, :location, :result, :remarks, :_destroy
         ]
       )
     end

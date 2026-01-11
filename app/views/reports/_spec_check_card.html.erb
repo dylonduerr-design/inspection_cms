@@ -2,8 +2,9 @@
 <div class="form-card" 
      data-controller="spec-drilldown" 
      data-spec-drilldown-report-id-value="<%= report.id %>">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2>Specification Checklists</h2>
+     
+  <div class="spec-header-row">
+    <h2 class="form-section-title" style="margin-bottom: 0;">Specification Checklists</h2>
     <button type="button" 
             class="btn-secondary" 
             data-action="click->spec-drilldown#openModal">
@@ -12,10 +13,11 @@
   </div>
 
   <%# --- 1. ACTIVE CHECKLISTS GRID --- %>
+  <%# We use the existing 'gallery-grid' class from application.css %>
   <div id="active-checklists-list" class="gallery-grid">
     <% if report.checklist_entries.any? %>
       <% report.checklist_entries.each do |entry| %>
-        <%# UPDATED: Added data-spec-id and data-answers attributes %>
+        <%# This renders existing saved entries %>
         <div class="gallery-card" 
              style="padding: 15px; text-align: left;" 
              data-spec-code="<%= entry.spec_item.code %>"
@@ -25,74 +27,66 @@
           <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">
             <%= entry.spec_item.code %>
           </div>
-          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; height: 40px; overflow: hidden;">
+          <div class="text-muted-sm" style="margin-bottom: 10px; height: 40px; overflow: hidden;">
             <%= entry.spec_item.description %>
           </div>
           
-          <%# UPDATED: Changed to an action button %>
           <button type="button" 
-                  class="btn-secondary" 
-                  style="width: 100%; font-size: 0.8rem;"
+                  class="btn-secondary w-full text-muted-sm"
                   data-action="click->spec-drilldown#editSpec">
             ✎ Edit Checklist
           </button>
+          
+          <%# Hidden field to ensure existing records are kept/updated if needed (handled by Rails normally) %>
         </div>
       <% end %>
     <% else %>
-      <%# ... (Keep your empty state div here) ... %>
-      <div class="text-muted" style="grid-column: 1 / -1; padding: 20px; text-align: center; border: 2px dashed #e5e7eb; border-radius: 8px;">
-        No specification checklists added yet.
+      <%# Empty State %>
+      <div class="spec-empty-state">
+        No specification checklists added yet.<br>
+        Click <strong>+ Add Spec Checklist</strong> to select required inspections.
       </div>
     <% end %>
   </div>
-  <%# --- 2. DATA STORE (Passed to Stimulus) --- %>
-  <%# This allows the JS controller to access all specs without making 100 API calls %>
+
+  <%# --- 2. DATA STORE --- %>
   <script id="spec-data-store" type="application/json">
     <%= SpecItem.all.select(:id, :code, :description, :division, :checklist_questions).to_json.html_safe %>
   </script>
 
   <%# --- 3. DRILL-DOWN MODAL --- %>
-  <dialog data-spec-drilldown-target="modal" style="width: 100%; max-width: 600px; border: none; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+  <dialog data-spec-drilldown-target="modal" class="spec-modal">
     
-    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; background: #f9fafb;">
-      <h3 data-spec-drilldown-target="modalTitle" style="margin: 0; font-size: 1.1rem;">Select Division</h3>
-      <button type="button" class="btn-clear" style="border: none; background: none; font-size: 1.2rem; cursor: pointer;" data-action="click->spec-drilldown#closeModal">✕</button>
+    <div class="spec-modal-header">
+      <h3 data-spec-drilldown-target="modalTitle" style="margin: 0;">Select Division</h3>
+      <button type="button" class="btn-clear" data-action="click->spec-drilldown#closeModal">✕</button>
     </div>
 
-    <div class="modal-body" style="padding: 20px; height: 60vh; overflow-y: auto;">
+    <div class="spec-modal-body">
       
       <%# VIEW A: DIVISIONS LIST %>
-      <%# This iterates over unique Divisions to create the first menu %>
       <div data-spec-drilldown-target="viewDivisions">
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <% SpecItem.select(:division).distinct.order(:division).each do |s| %>
-             <button type="button" 
-                     style="text-align: left; padding: 15px; background: white; border: 1px solid #eee; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between;"
-                     onmouseover="this.style.borderColor='#2563eb'; this.style.background='#eff6ff';"
-                     onmouseout="this.style.borderColor='#eee'; this.style.background='white';"
-                     data-action="click->spec-drilldown#selectDivision"
-                     data-division="<%= s.division %>">
-               <strong><%= s.division %></strong>
-               <span>›</span>
-             </button>
-          <% end %>
-        </div>
+        <% SpecItem.select(:division).distinct.order(:division).each do |s| %>
+            <button type="button" 
+                    class="spec-selection-btn"
+                    data-action="click->spec-drilldown#selectDivision"
+                    data-division="<%= s.division %>">
+              <strong><%= s.division %></strong>
+              <span>›</span>
+            </button>
+        <% end %>
       </div>
 
-      <%# VIEW B: SPEC LIST (Populated by JS) %>
+      <%# VIEW B: SPEC LIST %>
       <div data-spec-drilldown-target="viewSpecs" style="display: none;">
-         <button type="button" class="btn-clear" style="margin-bottom: 15px;" data-action="click->spec-drilldown#showDivisions">← Back to Divisions</button>
-         <div data-spec-drilldown-target="specListContainer" style="display: flex; flex-direction: column; gap: 10px;">
-           <%# JavaScript injects buttons here %>
-         </div>
+         <button type="button" class="btn-clear mb-2" data-action="click->spec-drilldown#showDivisions">← Back</button>
+         <div data-spec-drilldown-target="specListContainer"></div>
       </div>
 
-      <%# VIEW C: CHECKLIST FORM (Populated by JS) %>
+      <%# VIEW C: FORM %>
       <div data-spec-drilldown-target="viewForm" style="display: none;">
-         <button type="button" class="btn-clear" style="margin-bottom: 15px;" data-action="click->spec-drilldown#showSpecs">← Back to Specs</button>
-         <div id="checklist-form-placeholder" data-spec-drilldown-target="checklistFormPlaceholder">
-           <%# JavaScript injects the radio buttons here %>
-         </div>
+         <button type="button" class="btn-clear mb-2" data-action="click->spec-drilldown#showSpecs">← Back</button>
+         <div data-spec-drilldown-target="checklistFormPlaceholder"></div>
       </div>
 
     </div>
