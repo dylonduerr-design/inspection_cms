@@ -17,15 +17,6 @@
       SECTION 1: GENERAL INFORMATION
       ========================================================================= %>
   <div class="form-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
-      <h2 style="margin:0; border:none;">1. General Information</h2>
-      <div style="font-size:0.9rem; color:#666;">DIR #<%= report.dir_number %></div>
-    </div>
-
-    <%# =========================================================================
-      SECTION 1: GENERAL INFORMATION
-      ========================================================================= %>
-  <div class="form-card">
     <%# --- HEADER WITH CONTEXT --- %>
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:15px;">
       <div>
@@ -35,7 +26,7 @@
           <span style="font-size: 1rem; color: var(--primary); font-weight: 600; background: #eff6ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #dbeafe;">
             📂 <%= report.project.name %>
           </span>
-          <%# Hidden field ensures the ID is submitted even though we removed the dropdown %>
+          <%# Hidden field ensures the ID is submitted %>
           <%= form.hidden_field :project_id %>
         <% else %>
           <span style="color: var(--danger);">⚠ No Project Selected</span>
@@ -49,8 +40,9 @@
     <%# --- ROW 1: PHASE & CONTRACTOR --- %>
     <div class="form-row">
       <div class="form-group" style="flex: 1;">
-        <label>Phase / Area</label>
-        <%= form.collection_select :phase_id, Phase.all, :id, :name, {prompt: "Select Phase"}, { class: "form-control" } %>
+        <label>Phase / Area <span style="color:red">*</span></label>
+        <%# MAESTRO: Added required: true %>
+        <%= form.collection_select :phase_id, Phase.all, :id, :name, {prompt: "Select Phase"}, { class: "form-control", required: true } %>
       </div>
       <div class="form-group" style="flex: 2;">
         <label>Prime Contractor</label>
@@ -58,11 +50,12 @@
       </div>
     </div>
 
-    <%# --- ROW 2: DATES (Restored Split) & TIMES --- %>
+    <%# --- ROW 2: DATES & TIMES --- %>
     <div class="form-row">
       <div class="form-group">
-        <label>Start Date</label>
-        <%= form.date_field :start_date %>
+        <label>Start Date <span style="color:red">*</span></label>
+        <%# MAESTRO: Added required: true %>
+        <%= form.date_field :start_date, required: true %>
       </div>
       <div class="form-group">
         <label>End Date</label>
@@ -78,7 +71,7 @@
       </div>
     </div>
 
-    <%# --- WEATHER TRIO (Vertical Layout) --- %>
+    <%# --- WEATHER TRIO --- %>
     <div style="margin-top: 25px;">
       <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Weather Conditions</label>
       
@@ -135,7 +128,7 @@
   </div>
 
   <%# =========================================================================
-      SECTION 2: COMPLIANCE & SPECIFICATIONS (Consolidated)
+      SECTION 2: COMPLIANCE & CHECKLISTS
       ========================================================================= %>
   <div class="form-card">
     <h2 style="margin-top:0;">2. Compliance & Checklists</h2>
@@ -177,11 +170,10 @@
       </div>
     </div>
 
-    <%# --- B. STANDARD COMPLIANCE GRID (Compact) --- %>
+    <%# --- B. STANDARD COMPLIANCE GRID --- %>
     <h3 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px;">Site Conditions</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
       
-      <%# Helper for small radio groups %>
       <% render_toggle = ->(field_name, label_text, enum_keys) { %>
         <div style="border: 1px solid #eee; padding: 10px; border-radius: 6px;">
           <label style="display:block; font-size:0.8rem; font-weight:700; margin-bottom:8px;"><%= label_text %></label>
@@ -205,9 +197,8 @@
 
     <hr style="border-top: 1px solid #e5e7eb; margin: 30px 0;">
 
-    <%# --- C. SPEC CHECKLISTS (Moved Here!) --- %>
+    <%# --- C. SPEC CHECKLISTS --- %>
     <%= render "spec_check_card", report: report %>
-
   </div>
 
   <%# =========================================================================
@@ -275,14 +266,23 @@
                  <%= entry_form.number_field :quantity, step: 0.01, placeholder: "Qty" %>
                </div>
              </div>
+             
+             <%# MAESTRO FIX: Split delete logic so button always appears %>
              <div class="nested-row-container" style="margin-bottom: 10px;">
                <%= entry_form.hidden_field :checklist_answers, class: "checklist-answers-field", value: (entry_form.object.checklist_answers || {}).to_json %>
                <button type="button" class="checklist-btn btn-secondary opacity-50 cursor-not-allowed" data-action="click->report-form#openChecklist">Open Checklist</button>
-               <% if entry_form.object&.persisted? %>
+               
+               <% if entry_form.object.persisted? %>
                  <div style="display:none;"><%= entry_form.check_box :_destroy %></div>
-                 <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation">✕ Delete</button>
                <% end %>
+               
+               <button type="button" class="remove-row-btn" 
+                       data-action="click->report-form#removeAssociation" 
+                       style="margin-left: auto; color: red;">
+                 ✕ Delete
+               </button>
              </div>
+             
              <div class="form-group">
                <%= entry_form.text_field :notes, placeholder: "Daily notes for this item...", class: "w-full" %>
              </div>
@@ -294,12 +294,12 @@
   </div>
 
   <%# =========================================================================
-      SECTION 5: COMMENTARY & NOTES (Reordered)
+      SECTION 5: COMMENTARY & NOTES
       ========================================================================= %>
   <div class="form-card">
     <h2 style="margin-top:0;">5. Commentary & Notes</h2>
 
-    <%# 1. GENERAL COMMENTARY (Now First) %>
+    <%# 1. GENERAL COMMENTARY %>
     <div class="form-group full-width" style="margin-bottom: 25px;">
       <label style="font-size:1.1rem; color:var(--primary);">General Commentary</label>
       <small style="display:block; color:#666; margin-bottom:5px;">Summary of the day's events, issues, and progress.</small>
@@ -342,7 +342,8 @@
       <%= form.fields_for :report_attachments do |attachment_form| %>
         <div class="gallery-card nested-fields">
           <div class="thumbnail-area">
-            <% if attachment_form.object.file.attached? %>
+            <%# MAESTRO FIX: Ensure record is persisted before attempting thumbnail generation %>
+            <% if attachment_form.object.persisted? && attachment_form.object.file.attached? %>
               <% if attachment_form.object.file.representable? %>
                 <%= image_tag attachment_form.object.file.representation(resize_to_limit: [400, 400]) %>
               <% else %>
@@ -367,7 +368,7 @@
     <%= form.submit "Save & Submit Report", class: "btn-primary-action", style: "box-shadow: 0 4px 12px rgba(0,0,0,0.15);" %>
   </div>
 
-  <%# --- DIALOGS & TEMPLATES --- %>
+  <%# --- DIALOGS --- %>
   <dialog data-report-form-target="checklistModal">
     <div class="modal-header"><h3>Inspection Checklist</h3></div>
     <div class="modal-body" data-report-form-target="questionsContainer"></div>
@@ -377,11 +378,7 @@
     </div>
   </dialog>
 
-  <%# NOTE: Templates (qa-template, crew-template, etc.) are rendered below, identical to previous version but omitted here for brevity if unchanged. 
-      Ensure you keep the <template> tags from the previous file at the bottom! %>
-  
-  <%# ... [KEEP YOUR <template> TAGS HERE] ... %>
-  <%# To save space in this response, I am assuming you will retain the existing templates at the bottom of the file. %>
+  <%# --- TEMPLATES --- %>
   <%= render "form_templates" %> 
 
 <% end %>

@@ -1,22 +1,28 @@
+<%# app/views/reports/_crew_entry_fields.html.erb %>
 <div class="nested-entry-card nested-fields" style="margin-bottom: 15px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+  
+  <%# --- ROW 1 --- %>
   <div class="form-row">
      <div class="form-group">
        <label>Contractor</label>
+       <%# Class 'auto-contractor' is used by JS to auto-fill this field %>
        <%= f.text_field :contractor, placeholder: "Contractor Name", class: "auto-contractor" %>
      </div>
      <div class="form-group">
        <label>Superintendent</label>
-       <%= f.number_field :superintendent, placeholder: "no." %>
+       <%= f.text_field :superintendent, placeholder: "Name" %>
      </div>
      <div class="form-group">
        <label>Foreman</label>
-       <%= f.number_field :foreman, placeholder: "no." %>
+       <%= f.text_field :foreman, placeholder: "Name" %>
      </div>
      <div class="form-group">
        <label>Surveyors</label>
        <%= f.number_field :survey_count, placeholder: "no." %>
      </div>
   </div>
+
+  <%# --- ROW 2 --- %>
   <div class="form-row">
      <div class="form-group">
        <label>Operators</label>
@@ -30,11 +36,21 @@
        <label>Electricians</label>
        <%= f.number_field :electrician_count, placeholder: "no." %>
      </div>
+     
+     <%# --- DELETE BUTTON LOGIC --- %>
      <div class="form-group" style="display:flex; align-items:flex-end;">
-       <% if f.object&.persisted? %>
+       <%# 1. If saved, render the hidden destroy checkbox %>
+       <% if f.object.persisted? %>
          <div style="display:none;"><%= f.check_box :_destroy %></div>
-         <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red;">Delete</button>
        <% end %>
+
+       <%# 2. Always show the button. JS removes the DOM element. %>
+       <button type="button" class="remove-row-btn" 
+               data-action="click->report-form#removeAssociation" 
+               style="color: red;">
+         Delete
+       </button>
      </div>
   </div>
+
 </div>

@@ -10,17 +10,32 @@ class Report < ApplicationRecord
   
   has_many :activity_logs, dependent: :destroy
 
-  # NESTED ENTRIES
-  # These are the "Big Four" data tables attached to the report
+  # --- NESTED ENTRIES (The Big Four) ---
+  
+  # 1. PLACED QUANTITIES (BID ITEMS)
+  # MAESTRO CHANGE: We now reject this row if 'bid_item_id' is missing. 
+  # This prevents crashes if the user leaves the default row blank.
   has_many :placed_quantities, dependent: :destroy
-  accepts_nested_attributes_for :placed_quantities, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :placed_quantities, 
+                                allow_destroy: true, 
+                                reject_if: proc { |att| att['bid_item_id'].blank? }
 
+  # 2. EQUIPMENT
+  # Rejects if no description (make_model) is provided.
   has_many :equipment_entries, dependent: :destroy
-  accepts_nested_attributes_for :equipment_entries, allow_destroy: true, reject_if: proc { |att| att['make_model'].blank? }
+  accepts_nested_attributes_for :equipment_entries, 
+                                allow_destroy: true, 
+                                reject_if: proc { |att| att['make_model'].blank? }
 
+  # 3. CREW
+  # MAESTRO CHANGE: Rejects if 'contractor' is blank. 
+  # This allows the auto-spawned crew row to be ignored if unused.
   has_many :crew_entries, dependent: :destroy
-  accepts_nested_attributes_for :crew_entries, allow_destroy: true, reject_if: proc { |att| att['contractor'].blank? }
+  accepts_nested_attributes_for :crew_entries, 
+                                allow_destroy: true, 
+                                reject_if: proc { |att| att['contractor'].blank? }
 
+  # 4. QA ENTRIES
   has_many :qa_entries, dependent: :destroy
   accepts_nested_attributes_for :qa_entries, allow_destroy: true, reject_if: :all_blank
 

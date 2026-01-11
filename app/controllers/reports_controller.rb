@@ -46,6 +46,7 @@ class ReportsController < ApplicationController
     if params[:project_id].present?
       project = Project.find_by(id: params[:project_id])
       @report.project = project if project
+      @report.crew_entries.build if @report.crew_entries.empty?
     end
 
     # 3. Save Shell Record (validate: false)
@@ -60,6 +61,7 @@ class ReportsController < ApplicationController
   def edit
     @report.placed_quantities.build if @report.placed_quantities.empty?
     @report.equipment_entries.build if @report.equipment_entries.empty?
+    @report.crew_entries.build if @report.crew_entries.empty?
   end
 
   # POST /reports
