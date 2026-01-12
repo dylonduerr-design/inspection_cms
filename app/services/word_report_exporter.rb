@@ -3,9 +3,13 @@ require 'tempfile'
 
 class WordReportExporter
   def self.generate(report)
-    # 1. LOAD TEMPLATE
-    template_path = Rails.root.join('app', 'assets', 'documents', 'inspection_template.docx')
-    return nil unless File.exist?(template_path)
+    # 1. LOAD TEMPLATE (prefer the Context dummy, fall back to legacy location)
+    template_candidates = [
+      Rails.root.join('app', 'assets', 'Context', 'inspection_template.docx'),
+      Rails.root.join('app', 'assets', 'documents', 'inspection_template.docx')
+    ]
+    template_path = template_candidates.find { |path| File.exist?(path) }
+    return nil unless template_path
 
     # 2. PREPARE CAPTION MAPPING
     # Maps attachment captions to placeholders {{CAPTION 1}} ... {{CAPTION 6}}
@@ -20,20 +24,26 @@ class WordReportExporter
     # These are simple text replacements for the header/footer/body
     base_replacements = {
       # --- General Info ---
-      '{{PROJECT}}'     => report.project&.name,
-      '{{START_DATE}}'  => report.start_date&.strftime("%m/%d/%Y"),
-      '{{START_SHIFT}}' => report.shift_start,
-      '{{END_DATE}}'    => report.end_date&.strftime("%m/%d/%Y"),
-      '{{END_SHIFT}}'   => report.shift_end,
-      '{{INSPECTOR}}'   => report.inspector_name,
+      '{{PROJECT}}'            => report.project&.name,
+      '{{PROJECT MANAGER}}'    => report.project&.project_manager,
+      '{{CONSTRUCTION_MANAGER}}' => report.project&.construction_manager,
+      '{{CONTRACTOR}}'         => report.contractor.presence || report.project&.prime_contractor,
+      '{{DATE}}'               => format_date(report.start_date),
+      '{{START_DATE}}'         => format_date(report.start_date),
+      '{{END_DATE}}'           => format_date(report.end_date),
+      '{{DAY_X_OF_Y}}'         => report.contract_day_display,
+      '{{START_SHIFT}}'        => report.shift_start,
+      '{{END_SHIFT}}'          => report.shift_end,
+      '{{INSPECTOR}}'          => report.inspector_name,
 
       # --- Weather ---
-      '{{TEMP}}'    => [report.temp_1, report.temp_2, report.temp_3].compact.join(' / '),
-      '{{WEATHER}}' => [report.weather_summary_1, report.weather_summary_2, report.weather_summary_3].compact.join(' / '),
-      '{{WIND}}'    => [report.wind_1, report.wind_2, report.wind_3].compact.join(' / '),
-      '{{PRECIP}}'  => [report.precip_1, report.precip_2, report.precip_3].compact.join(' / '),
-      '{{VIS}}'     => "N/A",
-      '{{SURFACE}}' => "N/A",
+      '{{TEMP}}'          => slash_join(report.temp_1, report.temp_2, report.temp_3),
+      '{{WEATHER}}'       => slash_join(report.weather_summary_1, report.weather_summary_2, report.weather_summary_3),
+      '{{WEATHER_EVENT}}' => slash_join(report.weather_summary_1, report.weather_summary_2, report.weather_summary_3),
+      '{{WIND}}'          => slash_join(report.wind_1, report.wind_2, report.wind_3),
+      '{{PRECIP}}'        => slash_join(report.precip_1, report.precip_2, report.precip_3),
+      '{{VIS}}'           => slash_join(report.visibility_1, report.visibility_2, report.visibility_3, fallback: "N/A"),
+      '{{SURFACE}}'       => report.surface_conditions.presence || "N/A",
 
       # --- Compliance & Safety ---
       '{{SEC_STATUS}}'      => human_enum(report.security),
@@ -41,6 +51,7 @@ class WordReportExporter
       '{{AIR_OPS}}'         => human_enum(report.air_ops_coordination),
       '{{SWPPP}}'           => human_enum(report.swppp_controls),
       '{{ENV_STATUS}}'      => human_enum(report.environmental),
+      '{{PHASE_STATUS}}'    => human_enum(report.phasing_compliance),
       '{{SAF_STATUS}}'      => human_enum(report.safety_incident),
       '{{SAF_DESCRIPTION}}' => report.safety_desc || "None",
       '{{DEF_STATUS}}'      => human_enum(report.deficiency_status),
@@ -119,9 +130,22 @@ class WordReportExporter
 
   # Helper: Converts enum strings like "qa_pass" to "Pass" or "traffic_yes" to "Yes"
   def self.human_enum(val)
-    return "N/A" if val.nil? || val == 0
+    return "N/A" if val.nil?
+
+    str = val.to_s
+    return "N/A" if str == "0" || str.end_with?('_na')
+
     # Splits "safety_yes" -> "Yes", "qa_fail" -> "Fail"
-    val.include?('_') ? val.split('_').last.capitalize : val.humanize
+    str.include?('_') ? str.split('_').last.capitalize : str.humanize
+  end
+
+  def self.format_date(date)
+    date&.strftime("%m/%d/%Y")
+  end
+
+  def self.slash_join(*values, fallback: "")
+    joined = values.compact.reject(&:blank?).join(' / ')
+    joined.presence || fallback.to_s
   end
 
   # Helper: Iterates through document paragraphs to replace text

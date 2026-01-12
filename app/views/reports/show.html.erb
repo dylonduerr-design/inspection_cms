@@ -1,6 +1,5 @@
 <div class="report-container">
   
-  <%# --- NOTIFICATIONS --- %>
   <% if notice %>
     <div class="alert alert-success"><%= notice %></div>
   <% end %>
@@ -8,7 +7,6 @@
     <div class="alert alert-danger"><%= alert %></div>
   <% end %>
 
-  <%# --- HEADER & META DATA --- %>
   <div class="report-header">
     <div class="header-title">
       <div>
@@ -34,6 +32,12 @@
         <label>End Date</label>
         <div class="value"><%= @report.end_date&.strftime("%b %d, %Y") || "-" %></div>
       </div>
+      <% if @report.contract_day_display %>
+        <div class="meta-item">
+          <label>Contract Progress</label>
+          <div class="value"><strong><%= @report.contract_day_display %></strong></div>
+        </div>
+      <% end %>
       <div class="meta-item">
         <label>Inspector</label>
         <div class="value"><%= @report.user.email %></div>
@@ -53,7 +57,6 @@
     </div>
   </div>
 
-  <%# --- 1. WEATHER READINGS --- %>
   <div class="report-section">
     <h3>Weather Readings</h3>
     <div class="weather-grid">
@@ -81,11 +84,9 @@
     </div>
   </div>
 
-  <%# --- 2. SITE COMPLIANCE (UPDATED: Grid Layout) --- %>
   <div class="report-section">
     <h3>Site Compliance</h3>
 
-    <%# Alerts for Issues %>
     <% if @report.yes_deficiency? || @report.cdr? || @report.ncr? %>
       <div class="alert alert-danger">
         <strong>Deficiency Reported:</strong> <%= @report.deficiency_status.humanize %>
@@ -100,9 +101,7 @@
       </div>
     <% end %>
 
-    <%# The New Grid Layout %>
     <div class="compliance-grid">
-      <%# Helper lambda to render items cleanly %>
       <% render_comp_item = ->(label, val) { %>
         <div class="compliance-item">
           <span class="compliance-label"><%= label %></span>
@@ -125,7 +124,6 @@
     </div>
   </div>
 
-  <%# --- 3. SPECIFICATION CHECKLISTS (UPDATED: Clean Cards) --- %>
   <% if @report.checklist_entries.any? %>
     <div class="report-section">
       <h3>Specification Compliance Checklists</h3>
@@ -160,7 +158,6 @@
     </div>
   <% end %>
 
-  <%# --- 4. QUALITY ASSURANCE --- %>
   <% if @report.qa_entries.any? %>
     <div class="report-section">
       <h3>Quality Assurance</h3>
@@ -195,18 +192,15 @@
     </div>
   <% end %>
 
-  <%# --- 5. WORKFORCE & EQUIPMENT --- %>
   <div class="report-section">
     <h3>Workforce & Equipment</h3>
     
-    <%# Workforce %>
     <% if @report.crew_entries.any? %>
       <h4 style="margin-top:0;">Workforce Log</h4>
       <table class="modern-table" style="margin-bottom: 20px;">
         <thead>
           <tr>
             <th>Contractor</th>
-            <%# MAESTRO CHANGE: Updated Headers %>
             <th class="text-center">Supt (No.)</th>
             <th class="text-center">Foreman (No.)</th>
             <th class="text-center">Survey</th>
@@ -220,7 +214,6 @@
             <tr>
               <td class="font-bold"><%= crew.contractor %></td>
               
-              <%# MAESTRO CHANGE: Updated to new Integer fields %>
               <td class="text-center"><%= crew.superintendent_count %></td>
               <td class="text-center"><%= crew.foreman_count %></td>
               
@@ -236,7 +229,6 @@
       <p class="text-muted-sm">No workforce recorded.</p>
     <% end %>
 
-    <%# Equipment %>
     <h4 style="margin-top: 15px;">Equipment Log</h4>
     <% if @report.equipment_entries.any? %>
       <table class="modern-table">
@@ -264,7 +256,6 @@
     <% end %>
   </div>
 
-  <%# --- 6. QUANTITIES & NOTES --- %>
   <div class="report-section">
     <h3>Quantities & Inspection Entries</h3>
     
@@ -306,7 +297,6 @@
     <% end %>
   </div>
 
-  <%# --- 7. ADDITIONAL INFORMATION --- %>
   <% if @report.additional_activities.present? || @report.additional_info.present? || @report.commentary.present? %>
     <div class="report-section">
       <h3>Additional Information</h3>
@@ -334,7 +324,6 @@
     </div>
   <% end %>
 
-  <%# --- 8. PHOTOS & DOCUMENTS --- %>
   <div class="report-section">
     <h3>Attached Documents & Photos</h3>
     
@@ -371,7 +360,6 @@
     <% end %>
   </div>
 
-  <%# --- 9. WORKFLOW ACTIONS --- %>
   <div class="action-bar-container">
     <% if @report.creating? || @report.revise? %>
       <div class="primary-actions">
@@ -402,7 +390,6 @@
     <% end %>
   </div>
 
-  <%# --- 10. ACTIVITY LOG --- %>
   <div class="report-section">
     <h3>Activity Log</h3>
     <% if @report.activity_logs.any? %>

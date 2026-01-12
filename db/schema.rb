@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_12_023657) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_12_033824) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -50,6 +50,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_12_023657) do
     t.datetime "updated_at", null: false
     t.index ["report_id"], name: "index_activity_logs_on_report_id"
     t.index ["user_id"], name: "index_activity_logs_on_user_id"
+  end
+
+  create_table "approved_equipments", force: :cascade do |t|
+    t.string "name"
+    t.bigint "project_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_approved_equipments_on_project_id"
   end
 
   create_table "bid_items", force: :cascade do |t|
@@ -130,6 +138,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_12_023657) do
     t.string "construction_manager"
     t.integer "contract_days"
     t.date "contract_start_date"
+    t.string "prime_contractor"
   end
 
   create_table "qa_entries", force: :cascade do |t|
@@ -239,6 +248,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_12_023657) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "activity_logs", "reports"
   add_foreign_key "activity_logs", "users"
+  add_foreign_key "approved_equipments", "projects"
   add_foreign_key "bid_items", "projects"
   add_foreign_key "bid_items", "spec_items"
   add_foreign_key "checklist_entries", "reports"

@@ -6,7 +6,18 @@
     </div>
     <div class="form-group" style="flex: 3;">
       <label class="text-muted-sm">Make/Model</label>
-      <%= f.text_field :make_model, placeholder: "Description", style: "width: 100%;" %>
+      <% if f.object.report&.project&.approved_equipments&.any? %>
+        <%= f.select :make_model, 
+                     options_for_select(
+                       f.object.report.project.approved_equipments.pluck(:name).map { |name| [name, name] } + [["Other (type below)", ""]], 
+                       f.object.make_model
+                     ),
+                     { include_blank: "Select Equipment" },
+                     { style: "width: 100%;", class: "equipment-select", 
+                       onchange: "if(this.value === '') { let input = document.createElement('input'); input.type = 'text'; input.name = this.name; input.placeholder = 'Description'; input.style.width = '100%'; input.value = ''; this.parentNode.replaceChild(input, this); }" } %>
+      <% else %>
+        <%= f.text_field :make_model, placeholder: "Description", style: "width: 100%;" %>
+      <% end %>
     </div>
     <div class="form-group" style="flex: 0.5;">
       <label class="text-muted-sm">Qty</label>

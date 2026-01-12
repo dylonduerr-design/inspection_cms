@@ -1,23 +1,18 @@
-<%# app/views/reports/_crew_entry_fields.html.erb %>
 <div class="nested-entry-card nested-fields" style="margin-bottom: 15px; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
   
-  <%# --- ROW 1 --- %>
   <div class="form-row">
      <div class="form-group">
        <label>Contractor</label>
-       [cite_start]<%# Class 'auto-contractor' is used by JS to auto-fill this field [cite: 376] %>
        <%= f.text_field :contractor, placeholder: "Contractor Name", class: "auto-contractor" %>
      </div>
      
      <div class="form-group">
        <label>Supt (Count)</label>
-       <%# MAESTRO CHANGE: Updated to number_field for :superintendent_count %>
        <%= f.number_field :superintendent_count, placeholder: "no." %>
      </div>
      
      <div class="form-group">
        <label>Foreman (Count)</label>
-       <%# MAESTRO CHANGE: Updated to number_field for :foreman_count %>
        <%= f.number_field :foreman_count, placeholder: "no." %>
      </div>
      
@@ -27,7 +22,6 @@
      </div>
   </div>
 
-  <%# --- ROW 2 --- %>
   <div class="form-row">
      <div class="form-group">
        <label>Operators</label>
@@ -42,14 +36,11 @@
        <%= f.number_field :electrician_count, placeholder: "no." %>
      </div>
      
-     <%# --- DELETE BUTTON LOGIC --- %>
      <div class="form-group" style="display:flex; align-items:flex-end;">
-       [cite_start]<%# 1. If saved, render the hidden destroy checkbox [cite: 379] %>
        <% if f.object.persisted? %>
          <div style="display:none;"><%= f.check_box :_destroy %></div>
        <% end %>
 
-       <%# 2. Always show the button. [cite_start]JS removes the DOM element. [cite: 380] %>
        <button type="button" class="remove-row-btn" 
                data-action="click->report-form#removeAssociation" 
                style="color: red;">

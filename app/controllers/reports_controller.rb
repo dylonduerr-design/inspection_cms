@@ -6,26 +6,19 @@ class ReportsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_report, only: %i[ show edit update destroy submit_for_qc approve request_revision export_word ]
 
-  # GET /reports
   def index
-    # 1. DEFAULT: Set the default status
     params[:status] ||= 'creating'
 
-    # 2. SCOPE: Determine base collection
-    # Inspectors see their own in 'creating/revise', global view for others.
     @reports = if ['creating', 'revise'].include?(params[:status])
                  current_user.reports 
                else
                  Report.all
                end
 
-    # 2.5. EAGER LOADING: Prevent N+1 queries
     @reports = @reports.includes(:user, :project, :phase, :placed_quantities)
 
-    # 3. FILTER: Apply status filter
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
 
-    # 4. SEARCH: Apply remaining filters
     apply_search_filters
 
     respond_to do |format|
@@ -34,63 +27,46 @@ class ReportsController < ApplicationController
     end
   end
 
-  # GET /reports/1
   def show
   end
 
-  # GET /reports/new
   def new
-    # 1. Initialize empty shell
     @report = current_user.reports.build(status: :creating)
     
-    # 2. Pre-fill Project Data
     if params[:project_id].present?
       @project = Project.find_by(id: params[:project_id])
       
       if @project
         @report.project = @project
         
-        # Auto-fill header info
-        @report.contractor = @project.respond_to?(:prime_contractor) ? @project.prime_contractor : nil
-        
-        # MAESTRO FIX: Removed assignment to deleted 'superintendent' column
+        @report.contractor = @project.prime_contractor if @project.prime_contractor.present?
       end
     end
 
-    # 3. Build Nested Shells (So the form shows empty rows to fill in)
     @report.placed_quantities.build
     @report.equipment_entries.build
     @report.crew_entries.build
     
-    # Note: We do NOT build checklist_entries here anymore.
-    # 4. Render the 'new' view directly (DO NOT SAVE/REDIRECT)
   end
 
-  # GET /reports/1/edit
   def edit
-    # MAESTRO: Ensure form has empty rows if current data is empty
     @report.placed_quantities.build if @report.placed_quantities.empty?
     @report.equipment_entries.build if @report.equipment_entries.empty?
     @report.crew_entries.build if @report.crew_entries.empty?
   end
 
-  # POST /reports
   def create
-    # This is where the record is actually saved for the first time.
-    # The params will include the Report attributes AND the nested checklist answers.
     @report = current_user.reports.build(report_params)
-    @report.status = :creating # Enforce status
+    @report.status = :creating
 
     if @report.save
       redirect_to report_url(@report), notice: "Report was successfully created."
     else
-      # If validation fails, we must re-set the @project for the view to render
       @project = @report.project 
       render :new, status: :unprocessable_entity
     end
   end
 
-  # PATCH/PUT /reports/1
   def update
     if @report.update(report_params)
       redirect_to report_url(@report), notice: "Report was successfully updated."
@@ -99,13 +75,11 @@ class ReportsController < ApplicationController
     end
   end
 
-  # DELETE /reports/1
   def destroy
     @report.destroy!
     redirect_to reports_url, notice: "Report was successfully deleted."
   end
 
-  # --- Workflow Actions ---
 
   def submit_for_qc
     @report.update(status: :qc_review)
@@ -123,7 +97,6 @@ class ReportsController < ApplicationController
     redirect_to @report, alert: "Report returned for revision."
   end
 
-  # --- EXPORT TO WORD ACTION ---
   def export_word
     temp_file = WordReportExporter.generate(@report)
 
@@ -203,15 +176,13 @@ class ReportsController < ApplicationController
 
     def report_params
       params.require(:report).permit(
-        # --- 1. GENERAL INFO ---
         :start_date, :end_date,
         :dir_number, :project_id, :phase_id, 
         :status, :result,
         :shift_start, :shift_end,
         :contractor,
-        :prime_contractor, # MAESTRO: :superintendent removed here
+        :prime_contractor,
 
-        # --- 2. WEATHER & CONDITIONS ---
         :temp_1, :temp_2, :temp_3,
         :wind_1, :wind_2, :wind_3,
         :precip_1, :precip_2, :precip_3,
@@ -222,7 +193,6 @@ class ReportsController < ApplicationController
 
         :station_start, :station_end, :plan_sheet, :relevant_docs,
         
-        # --- 3. COMPLIANCE & SAFETY ---
         :deficiency_status, :deficiency_desc,
         :safety_incident, :safety_desc,
         :commentary,
@@ -233,16 +203,13 @@ class ReportsController < ApplicationController
         :swppp_controls, :swppp_note,
         :phasing_compliance, :phasing_compliance_note,
 
-        # --- 4. TEXT AREAS ---
         :additional_activities, :additional_info,
         
-        # --- 5. ATTACHMENTS ---
         report_attachments_attributes: [:id, :caption, :file, :_destroy],
 
-        # --- 6. NESTED TABLES ---
         crew_entries_attributes: [
           :id, :contractor,
-          :superintendent_count, :foreman_count, # MAESTRO: Updated to counts
+          :superintendent_count, :foreman_count,
           :survey_count, :operator_count, :laborer_count, :electrician_count, 
           :notes, :_destroy
         ],
@@ -254,11 +221,9 @@ class ReportsController < ApplicationController
           :checklist_answers 
         ],
         
-        # MAESTRO: This allows flexible JSON/Hash storage for answers
         checklist_entries_attributes: [:id, :spec_item_id, :_destroy, checklist_answers: {}],
 
         qa_entries_attributes: [
-          # MAESTRO: Changed :note to :remarks to match your DB schema and View
           :id, :qa_type, :location, :result, :remarks, :_destroy
         ]
       )

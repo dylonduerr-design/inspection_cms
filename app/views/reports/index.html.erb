@@ -1,13 +1,10 @@
 <div class="dashboard-container">
 
-  <%# --- 1. CONTEXT HEADER: Project Selection & Directory --- %>
   <div class="context-header">
     <div class="context-selector">
       <div class="context-label">Current Project</div>
       
-      <%# We use a simple form that submits on change to "set the context" %>
       <%= form_with url: reports_path, method: :get, local: true, class: "context-form" do |f| %>
-        <%# Keep existing status if present so we don't switch tabs unexpectedly %>
         <%= hidden_field_tag :status, params[:status] %>
         
         <%= f.collection_select :project_id, Project.all, :id, :name, 
@@ -21,15 +18,12 @@
     </div>
 
     <div class="context-actions">
-      [cite_start]<%# The Directory button stays here as requested [cite: 490] %>
       <%= link_to "Directory", projects_path, class: "btn btn-clear" %>
     </div>
   </div>
 
-  <%# --- 2. TOOLBAR ROW: Tabs (Left) & Actions (Right) --- %>
   <div class="toolbar-row">
     
-    <%# A. Tabs %>
     <div class="dashboard-tabs">
       <% statuses = ['creating', 'qc_review', 'revise', 'authorization', 'all'] %>
       <% statuses.each do |status| %>
@@ -40,20 +34,16 @@
       <% end %>
     </div>
 
-    <%# B. Operational Actions (Moved above search bar) %>
     <div class="toolbar-actions">
       <%= link_to "Export CSV", reports_path(request.query_parameters.merge(format: :csv)), class: "btn btn-secondary btn-sm" %>
       
-      [cite_start]<%# This button uses the ID from the URL params to pre-select the project [cite: 490] %>
       <%= link_to "+ New Report", new_report_path(project_id: params[:project_id]), class: "btn btn-primary btn-sm" %>
     </div>
   </div>
 
-  <%# --- 3. FILTERS (Search Bar) --- %>
   <div class="filter-card">
     <%= form_with url: reports_path, method: :get, local: true, class: "search-form" do |form| %>
       <%= hidden_field_tag :status, params[:status] %>
-      <%# Keep the project_id hidden here so searching doesn't reset the context %>
       <%= hidden_field_tag :project_id, params[:project_id] %>
 
       <div class="filter-grid">
@@ -78,7 +68,6 @@
 
         <div class="filter-group">
           <label>Contains Item</label>
-          [cite_start]<%# Only show Bid Items for the selected project to keep it clean [cite: 496] %>
           <% items = params[:project_id].present? ? BidItem.where(project_id: params[:project_id]) : BidItem.all %>
           <%= form.collection_select :bid_item_id, items, :id, :code, { include_blank: "Any Item" }, { selected: params[:bid_item_id], class: "form-input" } %>
         </div>
@@ -91,7 +80,6 @@
     <% end %>
   </div>
 
-  <%# --- 4. DATA TABLE --- %>
   <div class="table-card">
     <table class="modern-table dashboard-table">
       <thead>

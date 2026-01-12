@@ -2,9 +2,42 @@
 
 <%= render @project %>
 
-<div>
-  <%= link_to "Edit this project", edit_project_path(@project) %> |
-  <%= link_to "Back to projects", projects_path %>
+<div class="form-card" style="margin-top: 20px;">
+  <h3>Approved Equipment List</h3>
+  <p class="text-muted">Define pre-approved equipment that can be selected from dropdowns in reports.</p>
+  
+  <% if @project.approved_equipments.any? %>
+    <ul style="margin-bottom: 15px;">
+      <% @project.approved_equipments.each do |equipment| %>
+        <li>
+          <%= equipment.name %>
+          <%= button_to "Remove", project_approved_equipment_path(@project, equipment), 
+                        method: :delete, 
+                        data: { confirm: "Are you sure?" }, 
+                        style: "display: inline; margin-left: 10px;",
+                        class: "btn-link text-danger" %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-muted">No approved equipment defined yet.</p>
+  <% end %>
+  
+  <%= form_with url: project_approved_equipments_path(@project), method: :post, local: true do |f| %>
+    <div class="form-row">
+      <div class="form-group">
+        <%= f.label :name, "Equipment Name/Model" %>
+        <%= f.text_field :name, placeholder: "e.g., Caterpillar D6 Dozer", required: true %>
+      </div>
+      <div class="form-group" style="display: flex; align-items: flex-end;">
+        <%= f.submit "Add Equipment", class: "btn btn-primary" %>
+      </div>
+    </div>
+  <% end %>
+</div>
 
-  <%= button_to "Destroy this project", @project, method: :delete %>
+<div style="margin-top: 20px;">
+  <%= link_to "Edit this project", edit_project_path(@project), class: "btn btn-secondary" %>
+  <%= link_to "Back to projects", projects_path, class: "btn btn-secondary" %>
+  <%= button_to "Destroy this project", @project, method: :delete, class: "btn btn-danger", data: { confirm: "Are you sure?" } %>
 </div>
