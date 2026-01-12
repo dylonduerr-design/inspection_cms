@@ -1,7 +1,11 @@
 require 'docx'
 require 'tempfile'
+require 'zip'
 
 class WordReportExporter
+  # Template image slots for the 6 construction photos in the DOCX
+  PHOTO_TARGETS = %w[image3.jpeg image4.jpeg image5.jpeg image6.jpeg image7.jpeg image8.jpeg].freeze
+
   def self.generate(report)
     # 1. LOAD TEMPLATE (prefer the Context dummy, fall back to legacy location)
     template_candidates = [
@@ -11,11 +15,12 @@ class WordReportExporter
     template_path = template_candidates.find { |path| File.exist?(path) }
     return nil unless template_path
 
-    # 2. PREPARE CAPTION MAPPING
-    # Maps attachment captions to placeholders {{CAPTION 1}} ... {{CAPTION 6}}
+    photo_attachments = pick_first_six_photos(report)
+
+    # 2. PREPARE CAPTION MAPPING (only from photo attachments)
     caption_map = {}
-    (1..6).each do |i|
-      attachment = report.report_attachments[i-1]
+    (1..PHOTO_TARGETS.length).each do |i|
+      attachment = photo_attachments[i - 1]
       text = attachment ? (attachment.caption || "") : ""
       caption_map["{{CAPTION #{i}}}"] = text
     end
@@ -123,6 +128,9 @@ class WordReportExporter
     # 7. SAVE TO TEMP FILE
     temp_file = Tempfile.new(['report', '.docx'])
     doc.save(temp_file.path)
+
+    # 8. SWAP TEMPLATE IMAGES WITH REPORT PHOTOS
+    replace_template_images(temp_file.path, photo_attachments)
     temp_file
   end
 
@@ -219,5 +227,33 @@ class WordReportExporter
 
     # 5. Remove the template row
     template_row.node.remove
+  end
+
+  # --- PHOTO HANDLING ---
+  def self.pick_first_six_photos(report)
+    report.report_attachments.select { |attachment| image_attachment?(attachment) }.first(PHOTO_TARGETS.length)
+  end
+
+  def self.image_attachment?(attachment)
+    blob = attachment.file.blob
+    return false unless blob
+
+    # Prefer reliable content_type check; fall back to representable? (which can be false before analysis)
+    (blob.content_type&.start_with?('image/')) || attachment.file.representable?
+  end
+
+  def self.replace_template_images(docx_path, attachments)
+    return if attachments.empty?
+
+    Zip::File.open(docx_path) do |zip_file|
+      attachments.each_with_index do |attachment, index|
+        target_name = PHOTO_TARGETS[index]
+        entry = zip_file.find_entry("word/media/#{target_name}")
+        next unless entry
+
+        blob_bytes = attachment.file.download
+        zip_file.get_output_stream(entry) { |os| os.write(blob_bytes) }
+      end
+    end
   end
 end
