@@ -50,6 +50,7 @@
         <label>Phase / Area <span class="text-danger">*</span></label>
         <%= form.collection_select :phase_id, Phase.all, :id, :name, {prompt: "Select Phase"}, { class: "form-control", required: true } %>
       </div>
+      <%# Kept flex-2 inline as it is specific layout logic, or we could add .flex-grow-2 to CSS %>
       <div class="form-group" style="flex: 2;">
         <label>Prime Contractor</label>
         <%= form.text_field :contractor, id: "main-contractor-input", placeholder: "Enter Prime Contractor Name" %>
@@ -77,7 +78,7 @@
     </div>
 
     <%# --- WEATHER TRIO --- %>
-    <div style="margin-top: 25px;">
+    <div class="mt-4">
       <label class="text-muted-sm uppercase tracking-wide">Weather Conditions</label>
       
       <div class="weather-grid">
@@ -126,7 +127,7 @@
       
       <%# Surface Conditions %>
       <div class="surface-conditions-box">
-        <label style="font-weight: 600; color: var(--text-main);">Surface / Site Conditions</label>
+        <label class="font-bold text-main">Surface / Site Conditions</label>
         <%= form.text_field :surface_conditions, placeholder: "e.g. Dry, Muddy, Standing Water in areas...", class: "w-full mt-2" %>
       </div>
     </div>
@@ -136,13 +137,14 @@
       SECTION 2: COMPLIANCE & CHECKLISTS
       ========================================================================= %>
   <div class="form-card">
-    <h2 class="form-section-title" style="margin-bottom: 2rem;">2. Compliance & Checklists</h2>
+    <h2 class="form-section-title mb-4">2. Compliance & Checklists</h2>
 
     <%# --- A. CRITICAL ALERTS --- %>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+    <div class="d-flex gap-4 mb-4">
+      
       <%# Deficiencies %>
-      <div style="background: var(--bg-alert); border: 1px solid var(--border-alert); padding: 15px; border-radius: 8px;">
-         <label style="color: var(--danger); font-weight: bold; display: block; margin-bottom: 8px;">Deficiencies / NCRs?</label>
+      <div class="compliance-alert-box alert-box-danger w-full">
+         <label class="alert-label-danger">Deficiencies / NCRs?</label>
          <div class="radio-group">
            <% Report.deficiency_statuses.keys.each do |k| %>
              <label class="radio-label bg-white border-gray">
@@ -152,14 +154,15 @@
              </label>
            <% end %>
          </div>
-         <div id="deficiency-note" style="display: <%= ['yes_deficiency', 'cdr', 'ncr'].include?(report.deficiency_status) ? 'block' : 'none' %>; margin-top: 10px;">
+         <%# Dynamic Toggle %>
+         <div id="deficiency-note" class="mt-2" style="display: <%= ['yes_deficiency', 'cdr', 'ncr'].include?(report.deficiency_status) ? 'block' : 'none' %>;">
            <%= form.text_area :deficiency_desc, rows: 2, placeholder: "Describe deficiency...", class: "w-full" %>
          </div>
       </div>
 
       <%# Safety %>
-      <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 15px; border-radius: 8px;">
-         <label style="color: #c2410c; font-weight: bold; display: block; margin-bottom: 8px;">Safety Issues?</label>
+      <div class="compliance-alert-box alert-box-warning w-full">
+         <label class="alert-label-warning">Safety Issues?</label>
          <div class="radio-group">
            <% Report.safety_incidents.keys.each do |k| %>
              <label class="radio-label bg-white border-gray">
@@ -169,7 +172,8 @@
              </label>
            <% end %>
          </div>
-         <div id="safety-note" style="display: <%= report.safety_yes? ? 'block' : 'none' %>; margin-top: 10px;">
+         <%# Dynamic Toggle %>
+         <div id="safety-note" class="mt-2" style="display: <%= report.safety_yes? ? 'block' : 'none' %>;">
            <%= form.text_area :safety_desc, rows: 2, placeholder: "Describe incident...", class: "w-full" %>
          </div>
       </div>
@@ -217,7 +221,7 @@
       <% render_compliance_item.call(:swppp_controls, "SWPPP Controls", :swppp_note, Report.swppp_controls.keys) %>
     </div>
 
-    <hr style="border-top: 1px solid var(--border-color); margin: 30px 0;">
+    <hr class="my-5 border-light">
 
     <%# --- C. SPEC CHECKLISTS --- %>
     <%# Renders the new partial with the cleaned up CSS and Logic %>
@@ -228,7 +232,7 @@
       SECTION 3: WORKFORCE & EQUIPMENT
       ========================================================================= %>
   <div class="form-card">
-    <h2 class="form-section-title" style="margin-bottom: 2rem;">3. Workforce & Equipment</h2>
+    <h2 class="form-section-title mb-4">3. Workforce & Equipment</h2>
 
     <%# Crew %>
     <label class="font-bold block mb-2">Workforce Log</label>
@@ -253,7 +257,7 @@
       SECTION 4: QA & QUANTITIES
       ========================================================================= %>
   <div class="form-card">
-    <h2 class="form-section-title" style="margin-bottom: 2rem;">4. QA & Quantities</h2>
+    <h2 class="form-section-title mb-4">4. QA & Quantities</h2>
     
     <%# QA Section %>
     <div class="mb-4">
@@ -266,7 +270,7 @@
       <button type="button" class="btn-secondary" data-action="click->report-form#addAssociation" data-template-id="qa-template" data-container-id="qa-entries-container">+ Add Test</button>
     </div>
 
-    <hr style="border-top: 1px solid var(--border-color); margin: 25px 0;">
+    <hr class="my-5 border-light">
 
     <%# Quantities Section %>
     <div class="mb-4">
@@ -282,7 +286,7 @@
                   <% current_project = report.project || (@project if defined?(@project)) %>
                   <% collection = current_project ? current_project.bid_items.order(:code) : [] %>
                   
-                  <%# CRASH PROTECTION: try(:checklist_questions) || try(:active_questions) || [] %>
+                  <%# CRASH PROTECTION %>
                   <%= entry_form.select :bid_item_id, 
                         collection.map { |bi| 
                           questions = bi.try(:checklist_questions) || bi.try(:active_questions) || []
@@ -326,7 +330,7 @@
       SECTION 5: COMMENTARY & NOTES
       ========================================================================= %>
   <div class="form-card">
-    <h2 class="form-section-title" style="margin-bottom: 2rem;">5. Commentary & Notes</h2>
+    <h2 class="form-section-title mb-4">5. Commentary & Notes</h2>
 
     <%# 1. GENERAL COMMENTARY %>
     <div class="form-group full-width mb-4">
@@ -335,11 +339,11 @@
       <%= form.text_area :commentary, rows: 6, class: "p-3 text-base" %>
     </div>
 
-    <hr style="border-top: 1px solid var(--border-color); margin: 25px 0;">
+    <hr class="my-5 border-light">
 
     <%# 2. ADDITIONAL ACTIVITIES %>
     <div class="mb-3">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+      <div class="d-flex align-center gap-2 mb-2">
         <%= check_box_tag "toggle_activities", "1", report.additional_activities.present?, 
             data: { action: "change->report-form#toggleSection", target_id: "box-activities" } %>
         <label for="toggle_activities" class="font-bold cursor-pointer">Include "Additional Activities"?</label>
@@ -351,7 +355,7 @@
 
     <%# 3. ADDITIONAL INFO %>
     <div>
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+      <div class="d-flex align-center gap-2 mb-2">
         <%= check_box_tag "toggle_info", "1", report.additional_info.present?, 
             data: { action: "change->report-form#toggleSection", target_id: "box-info" } %>
         <label for="toggle_info" class="font-bold cursor-pointer">Include "Additional Information"?</label>
@@ -366,7 +370,7 @@
       SECTION 6: PHOTOS
       ========================================================================= %>
   <div class="form-card">
-    <h2 class="form-section-title" style="margin-bottom: 2rem;">6. Photos & Attachments</h2>
+    <h2 class="form-section-title mb-4">6. Photos & Attachments</h2>
     <div id="attachments-container" class="gallery-grid">
       <%= form.fields_for :report_attachments do |attachment_form| %>
         <div class="gallery-card nested-fields">
@@ -381,7 +385,7 @@
                <span class="text-muted-sm">New Upload</span>
             <% end %>
           </div>
-          <div style="padding: 10px;">
+          <div class="p-3">
             <% if attachment_form.object.new_record? %>
                <%= attachment_form.file_field :file, class: "mb-2 text-sm" %>
             <% end %>

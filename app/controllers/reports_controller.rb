@@ -19,6 +19,9 @@ class ReportsController < ApplicationController
                  Report.all
                end
 
+    # 2.5. EAGER LOADING: Prevent N+1 queries
+    @reports = @reports.includes(:user, :project, :phase, :placed_quantities)
+
     # 3. FILTER: Apply status filter
     @reports = @reports.where(status: params[:status]) unless params[:status] == 'all'
 
@@ -247,7 +250,7 @@ class ReportsController < ApplicationController
           :id, :make_model, :hours, :quantity, :contractor, :_destroy
         ],
         placed_quantities_attributes: [
-          :id, :bid_item_id, :quantity, :notes, :location, :_destroy, 
+          :id, :bid_item_id, :quantity, :location, :notes, :_destroy, 
           :checklist_answers 
         ],
         

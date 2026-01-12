@@ -54,6 +54,8 @@ class Report < ApplicationRecord
   validates :phase, presence: true
 
   # --- 4. ENUMS ---
+  
+  # Workflow Status
   enum status: { creating: 0, qc_review: 1, revise: 2, authorization: 3 }
   enum result: { pending: 0, pass: 1, fail: 2, as_built: 3 }
   
@@ -61,7 +63,7 @@ class Report < ApplicationRecord
   enum deficiency_status: { no_deficiency: 0, yes_deficiency: 1, cdr: 2, ncr: 3 }
   enum safety_incident:   { safety_no: 0, safety_yes: 1, safety_na: 2 }
   
-  # Site Conditions
+  # Site Conditions Checklist
   enum traffic_control:       { tc_na: 0, tc_yes: 1, tc_no: 2 }
   enum environmental:         { env_na: 0, env_yes: 1, env_no: 2 }
   enum security:              { sec_na: 0, sec_yes: 1, sec_no: 2 }

@@ -540,3 +540,92 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); }
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* =========================================
+   10. UTILITIES (New Section)
+   ========================================= */
+/* Spacing Helpers */
+.mt-0 { margin-top: 0 !important; }
+.mb-0 { margin-bottom: 0 !important; }
+.mt-2 { margin-top: 0.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-4 { margin-bottom: 1rem; }
+.py-5 { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+
+/* Flex Helpers */
+.d-flex { display: flex; }
+.flex-column { flex-direction: column; }
+.align-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+
+/* Widths */
+.w-full { width: 100%; }
+.max-w-600 { max-width: 600px; margin-left: auto; margin-right: auto; }
+
+/* Text Colors */
+.text-danger { color: var(--danger); }
+.text-success { color: var(--success); }
+.text-primary { color: var(--primary); }
+.font-bold { font-weight: 600; }
+
+/* =========================================
+   11. COMPONENT REFINEMENTS
+   ========================================= */
+
+/* Weather Section Specifics */
+.weather-btn {
+  width: 100%;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+/* Compliance Alerts (Replaces inline styles in Report Form) */
+.compliance-alert-box {
+  padding: 15px;
+  border-radius: 8px;
+  height: 100%; /* Ensure equal height in grids */
+}
+
+.alert-box-danger {
+  background: var(--bg-alert);
+  border: 1px solid var(--border-alert);
+}
+
+.alert-box-warning {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.alert-label-danger {
+  color: var(--danger);
+  font-weight: bold;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.alert-label-warning {
+  color: #c2410c;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Checklist Items (For JS Injection) */
+.checklist-item-row {
+  margin-bottom: 15px; 
+  border-bottom: 1px solid var(--border-color); 
+  padding-bottom: 10px;
+}
+
+.checklist-question {
+  margin: 0 0 5px 0; 
+  font-size: 0.95rem;
+}
+
+.checklist-options {
+  display: flex; 
+  gap: 15px;
+}

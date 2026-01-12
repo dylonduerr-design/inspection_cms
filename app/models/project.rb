@@ -7,7 +7,7 @@ class Project < ApplicationRecord
   has_many :spec_items, through: :bid_items
   
   # --- 2. Validations ---
-  validates :name, presence: true
+  validates :name, presence: true, uniqueness: true
   # We validate the new header fields to ensure data quality
   validates :contract_number, presence: true
 end

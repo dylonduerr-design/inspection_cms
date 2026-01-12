@@ -70,7 +70,7 @@ export default class extends Controller {
         <button type="button" class="spec-selection-btn" 
                 data-action="click->spec-drilldown#selectSpec" 
                 data-id="${spec.id}">
-          <strong style="color: var(--primary);">${spec.code}</strong>
+          <strong class="text-primary">${spec.code}</strong>
           <span class="text-muted-sm">${spec.description}</span>
         </button>
       `;
@@ -114,8 +114,8 @@ export default class extends Controller {
   // --- FORM RENDERING ---
 
   renderChecklistForm(questions, savedAnswers = {}) {
-    let html = `<div style="padding: 10px;">`;
-    html += `<p style="margin-bottom: 20px;"><strong>${questions.length} items to check:</strong></p>`;
+    let html = `<div>`;
+    html += `<p class="mb-4"><strong>${questions.length} items to check:</strong></p>`;
     
     questions.forEach((q) => {
       const isChecked = (val) => savedAnswers[q] === val ? "checked" : "";
@@ -123,9 +123,9 @@ export default class extends Controller {
       const safeKey = q.replace(/"/g, '&quot;');
 
       html += `
-        <div class="checklist-item" style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-          <p style="margin: 0 0 5px 0; font-size: 0.95rem;">${q}</p>
-          <div style="display: flex; gap: 15px;">
+        <div class="checklist-item-row">
+          <p class="checklist-question">${q}</p>
+          <div class="checklist-options">
             <label><input type="radio" name="answers[${safeKey}]" value="Yes" ${isChecked("Yes")}> Yes</label>
             <label><input type="radio" name="answers[${safeKey}]" value="No" ${isChecked("No")}> No</label>
             <label><input type="radio" name="answers[${safeKey}]" value="N/A" ${isChecked("N/A")}> N/A</label>
@@ -135,7 +135,7 @@ export default class extends Controller {
     });
 
     html += `
-      <div style="margin-top: 20px; text-align: right;">
+      <div class="mt-4 text-right">
         <button type="button" class="btn btn-primary" data-action="click->spec-drilldown#saveChecklist">Save Checklist</button>
       </div>
     `;
@@ -144,7 +144,7 @@ export default class extends Controller {
     this.checklistFormPlaceholderTarget.innerHTML = html;
   }
   
-  // --- SAVING LOGIC (The Critical Fix) ---
+  // --- SAVING LOGIC ---
 
   saveChecklist(event) {
     const btn = event.target;
@@ -251,16 +251,15 @@ export default class extends Controller {
       }
 
       const html = `
-        <div class="gallery-card" 
-             style="padding: 15px; text-align: left;"
+        <div class="gallery-card p-3 text-left" 
              data-spec-code="${data.spec_code}"
              data-spec-id="${data.id || ''}" 
              data-answers='${JSON.stringify(newAnswers)}'>
              
           ${hiddenFields}
              
-          <div style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">${data.spec_code}</div>
-          <div class="text-muted-sm" style="margin-bottom: 10px; height: 40px; overflow: hidden;">${data.spec_desc}</div>
+          <div class="font-bold text-primary mb-2">${data.spec_code}</div>
+          <div class="text-muted-sm mb-2" style="height: 40px; overflow: hidden;">${data.spec_desc}</div>
           
           <button type="button" 
                   class="btn-secondary w-full text-muted-sm"
