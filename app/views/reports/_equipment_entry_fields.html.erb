@@ -18,10 +18,15 @@
     </div>
     
     <div class="form-group" style="display: flex; align-items: flex-end;">
-      <% if f.object&.persisted? %>
+      <% if f.object.persisted? %>
         <div style="display:none;"><%= f.check_box :_destroy %></div>
-        <button type="button" class="remove-row-btn" data-action="click->report-form#removeAssociation" style="color: red; margin-bottom: 10px;">Delete</button>
       <% end %>
+      
+      <button type="button" class="remove-row-btn" 
+              data-action="click->report-form#removeAssociation" 
+              style="color: red; margin-bottom: 10px;">
+        Delete
+      </button>
     </div>
   </div>
 </div>

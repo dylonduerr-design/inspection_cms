@@ -24,27 +24,25 @@ admin = User.create!(
 )
 
 puts "🏗️  Maestro: Building Projects..."
-project_1 = Project.create!(
-  name: "Runway 1R Rehabilitation",
-  contract_number: "8983.61",
-  project_manager: "Anthony Lum, PE",
-  construction_manager: "Joshua Alcantara, PE",
-  contract_days: 89,
-  contract_start_date: Date.new(2025, 9, 24)
-)
+project_1 = Project.find_or_create_by!(name: "Runway 1R Rehabilitation") do |p|
+  p.contract_number = "8983.61"
+  p.project_manager = "Anthony Lum, PE"
+  p.construction_manager = "Joshua Alcantara, PE"
+  p.contract_days = 89
+  p.contract_start_date = Date.new(2025, 9, 24)
+end
 
-Project.create!(
-  name: "Taxiway Z Rehabilitation",
-  contract_number: "9000.12",
-  project_manager: "Anthony Lum, PE",
-  construction_manager: "Joshua Alcantara, PE",
-  contract_days: 120,
-  contract_start_date: Date.new(2025, 10, 1)
-)
+Project.find_or_create_by!(name: "Taxiway Z Rehabilitation") do |p|
+  p.contract_number = "9000.12"
+  p.project_manager = "Anthony Lum, PE"
+  p.construction_manager = "Joshua Alcantara, PE"
+  p.contract_days = 120
+  p.contract_start_date = Date.new(2025, 10, 1)
+end
 
 puts "📅 Maestro: Building Phases..."
-phase_1 = Phase.create!(name: "Phase 1 - Demolition")
-(2..6).each { |i| Phase.create!(name: "Phase #{i}") }
+phase_1 = Phase.find_or_create_by!(name: "Phase 1 - Demolition")
+(2..6).each { |i| Phase.find_or_create_by!(name: "Phase #{i}") }
 
 puts "📘 Maestro: Building FAA Spec Library..."
 default_questions = [

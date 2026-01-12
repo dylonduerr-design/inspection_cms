@@ -103,6 +103,16 @@ class Report < ApplicationRecord
   def set_defaults
     self.status ||= :creating
     self.result ||= :pending
+    
+    # Default all checklist buttons to N/A
+    self.deficiency_status ||= :no_deficiency
+    self.safety_incident ||= :safety_na
+    self.traffic_control ||= :tc_na
+    self.environmental ||= :env_na
+    self.security ||= :sec_na
+    self.air_ops_coordination ||= :air_na
+    self.swppp_controls ||= :swppp_na
+    self.phasing_compliance ||= :phase_na
   end
 
   def calculate_automatic_result
