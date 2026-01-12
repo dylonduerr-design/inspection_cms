@@ -16,7 +16,9 @@
 
 <%# 3. EQUIPMENT TEMPLATE %>
 <template id="equipment-template">
-  <%= fields_for :equipment_entries, EquipmentEntry.new, child_index: "NEW_RECORD" do |f| %>
+  <% model = Report.new %>
+  <% model.equipment_entries.build %>
+  <%= fields_for "report[equipment_entries_attributes]", model.equipment_entries.first, child_index: "NEW_RECORD" do |f| %>
     <%= render "equipment_entry_fields", f: f %>
   <% end %>
 </template>

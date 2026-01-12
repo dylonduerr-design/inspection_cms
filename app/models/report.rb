@@ -22,7 +22,7 @@ class Report < ApplicationRecord
   has_many :equipment_entries, dependent: :destroy
   accepts_nested_attributes_for :equipment_entries, 
                                 allow_destroy: true, 
-                                reject_if: proc { |att| att['make_model'].blank? }
+                                reject_if: proc { |att| att['make_model'].blank? && att['contractor'].blank? && att['quantity'].blank? && att['hours'].blank? }
 
   # 3. CREW
   has_many :crew_entries, dependent: :destroy
